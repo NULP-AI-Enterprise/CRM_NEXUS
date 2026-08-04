@@ -104,4 +104,4 @@ spec:
             timeoutSeconds: 3
             failureThreshold: 3
       imagePullSecrets:
-        - name: ghcr-secret # існує в кожному namespace — створити вручну один раз
+        - name: ghcr-pull-secret # існує в кожному namespace — створити вручну один раз
