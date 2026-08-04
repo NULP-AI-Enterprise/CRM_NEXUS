@@ -6,7 +6,7 @@ metadata:
 spec:
   project: default
   source:
-    repoURL: https://github.com/NULP-AI-Enterprise/personal-crm.git
+    repoURL: https://github.com/NULP-AI-Enterprise/CRM_NEXUS.git
     targetRevision: main
     path: k8s/
   destination:
