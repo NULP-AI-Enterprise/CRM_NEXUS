@@ -1,0 +1,23 @@
+# Single-label subdomain — already covered by the cluster's *.thesis-i.com
+# wildcard certificate, so no extra TLS handling is needed here (contrast with
+# butiktoys-pos's two-label host, see DEPLOY.md).
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: personal-crm
+  namespace: personal-crm
+  annotations:
+    traefik.ingress.kubernetes.io/router.entrypoints: web,websecure
+spec:
+  ingressClassName: traefik
+  rules:
+    - host: personal-crm.thesis-i.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: personal-crm
+                port:
+                  number: 3000

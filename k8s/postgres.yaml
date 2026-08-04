@@ -1,0 +1,82 @@
+# In-cluster Postgres for personal-crm. Delete this file and point
+# DATABASE_URL at an existing Postgres instance instead if one is available —
+# see DEPLOY.md §"Підключення до вже наявних Postgres".
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: personal-crm-postgres
+  namespace: personal-crm
+spec:
+  serviceName: personal-crm-postgres
+  replicas: 1
+  selector:
+    matchLabels:
+      app: personal-crm-postgres
+  template:
+    metadata:
+      labels:
+        app: personal-crm-postgres
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:16-alpine
+          ports:
+            - name: postgres
+              containerPort: 5432
+          env:
+            - name: POSTGRES_USER
+              valueFrom:
+                secretKeyRef:
+                  name: personal-crm-secret
+                  key: POSTGRES_USER
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: personal-crm-secret
+                  key: POSTGRES_PASSWORD
+            - name: POSTGRES_DB
+              value: personal_crm
+            - name: PGDATA
+              value: /var/lib/postgresql/data/pgdata
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/postgresql/data
+          readinessProbe:
+            exec:
+              command: ["pg_isready", "-U", "$(POSTGRES_USER)", "-d", "personal_crm"]
+            periodSeconds: 5
+            timeoutSeconds: 3
+          livenessProbe:
+            exec:
+              command: ["pg_isready", "-U", "$(POSTGRES_USER)", "-d", "personal_crm"]
+            periodSeconds: 15
+            timeoutSeconds: 5
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: 5Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: personal-crm-postgres
+  namespace: personal-crm
+spec:
+  clusterIP: None
+  selector:
+    app: personal-crm-postgres
+  ports:
+    - name: postgres
+      port: 5432
+      targetPort: postgres
