@@ -11,7 +11,7 @@ metadata:
 spec:
   ingressClassName: traefik
   rules:
-    - host: personal-crm.thesis-i.com
+    - host: nexus.thesis-i.com
       http:
         paths:
           - path: /
