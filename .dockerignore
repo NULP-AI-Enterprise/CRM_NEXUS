@@ -1,0 +1,17 @@
+node_modules
+.next
+.git
+.idea
+.env
+.env.*
+!.env.example
+npm-debug.log*
+Dockerfile
+docker-compose.yml
+k8s
+DEPLOY.md
+README.md
+.agents
+.claude
+.windsurf
+skills-lock.json
