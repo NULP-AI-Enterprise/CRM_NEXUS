@@ -79,17 +79,22 @@ export const CATEGORY_COLORS: Record<
   },
 };
 
-export const RELATIONSHIP_PRESETS = [
-  "Колега",
-  "Партнер",
-  "Інвестор",
-  "Співзасновник",
-  "Рекомендація",
-  "Клієнт",
-  "Радник",
-  "Друг",
-  "Підрядник",
-  "Спільний проект",
+/// Dictionary keys (see src/lib/i18n/dictionary.ts) for the relationship-type
+/// preset buttons in AddConnectionDialog. Resolve with t(key) for display;
+/// the *translated* text is what gets stored as Connection.relationship, so
+/// existing rows stay plain human-readable strings in whichever language
+/// they were created in.
+export const RELATIONSHIP_PRESET_KEYS = [
+  "relationship.colleague",
+  "relationship.partner",
+  "relationship.investor",
+  "relationship.cofounder",
+  "relationship.referral",
+  "relationship.client",
+  "relationship.advisor",
+  "relationship.friend",
+  "relationship.contractor",
+  "relationship.jointProject",
 ] as const;
 
 export const INTERACTION_TYPE_LABELS: Record<InteractionType, string> = {

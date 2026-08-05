@@ -3,6 +3,8 @@ import { Inter, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 
 import { Toaster } from "@/components/ui/sonner";
+import { I18nProvider } from "@/lib/i18n/context";
+import { getServerTranslation } from "@/lib/i18n/server";
 
 const fontSans = Inter({
   variable: "--font-sans",
@@ -16,20 +18,27 @@ const fontMono = JetBrains_Mono({
   display: "swap",
 });
 
-export const metadata: Metadata = {
-  title: "Nexus CRM — Knowledge Graph & Relationship Intelligence",
-  description: "Візуальний граф зв'язків та персональний CRM для нетворкінгу нового покоління.",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const { t } = await getServerTranslation();
+  return {
+    title: "Nexus CRM — Knowledge Graph & Relationship Intelligence",
+    description: t("app.description"),
+  };
+}
 
-export default function RootLayout({ children }: LayoutProps<"/">) {
+export default async function RootLayout({ children }: LayoutProps<"/">) {
+  const { locale } = await getServerTranslation();
+
   return (
     <html
-      lang="uk"
+      lang={locale}
       className={`dark ${fontSans.variable} ${fontMono.variable} h-full antialiased font-sans`}
     >
       <body className="min-h-full flex flex-col bg-background text-foreground tracking-[-0.01em]">
-        {children}
-        <Toaster theme="dark" position="bottom-right" richColors />
+        <I18nProvider initialLocale={locale}>
+          {children}
+          <Toaster theme="dark" position="bottom-right" richColors />
+        </I18nProvider>
       </body>
     </html>
   );

@@ -1,11 +1,15 @@
+"use client";
+
 import Link from "next/link";
-import { Star, ChevronRight, Building2 } from "lucide-react";
+import { Star, ChevronRight } from "lucide-react";
 
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { CATEGORY_COLORS, CATEGORY_LABELS, initials } from "@/lib/contact-display";
+import { CATEGORY_COLORS, initials } from "@/lib/contact-display";
+import { useTranslation } from "@/lib/i18n/context";
 import type { ContactModel } from "@/generated/prisma/models";
 
 export function ContactCard({ contact }: { contact: ContactModel }) {
+  const { t } = useTranslation();
   const colors = CATEGORY_COLORS[contact.category] || CATEGORY_COLORS.OTHER;
 
   return (
@@ -29,7 +33,7 @@ export function ContactCard({ contact }: { contact: ContactModel }) {
               className="size-1.5 rounded-full"
               style={{ backgroundColor: colors.dot }}
             />
-            {CATEGORY_LABELS[contact.category]}
+            {t(`category.${contact.category}`)}
           </span>
         </div>
 

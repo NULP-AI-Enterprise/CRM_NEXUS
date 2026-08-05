@@ -76,6 +76,28 @@ spec:
                 secretKeyRef:
                   name: personal-crm-secret
                   key: AUTH_SECRET
+            - name: APP_URL
+              value: "https://personal-crm.thesis-i.com"
+            - name: SMTP_HOST
+              valueFrom:
+                secretKeyRef:
+                  name: personal-crm-secret
+                  key: SMTP_HOST
+            - name: SMTP_PORT
+              valueFrom:
+                secretKeyRef:
+                  name: personal-crm-secret
+                  key: SMTP_PORT
+            - name: SMTP_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: personal-crm-secret
+                  key: SMTP_USERNAME
+            - name: SMTP_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: personal-crm-secret
+                  key: SMTP_PASSWORD
           resources:
             requests:
               cpu: 100m

@@ -12,16 +12,31 @@ datasource db {
 
 /// Application user (single-tenant owner of their own contact graph).
 model User {
-  id           String   @id @default(cuid())
-  email        String   @unique
-  passwordHash String
-  name         String?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id            String    @id @default(cuid())
+  email         String    @unique
+  passwordHash  String
+  name          String?
+  emailVerified DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
 
-  companies   Company[]
-  contacts    Contact[]
-  connections ContactConnection[]
+  companies           Company[]
+  contacts            Contact[]
+  connections         ContactConnection[]
+  verificationTokens  EmailVerificationToken[]
+}
+
+/// Single-use token emailed to a user to confirm ownership of their address.
+model EmailVerificationToken {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }
 
 /// A company / organization that contacts belong to.

@@ -18,3 +18,11 @@ export async function getCompaniesWithContacts(userId: string) {
 
   return { companies, unassignedContacts };
 }
+
+export async function listCompanies(userId: string) {
+  return prisma.company.findMany({
+    where: { userId },
+    select: { id: true, name: true },
+    orderBy: { name: "asc" },
+  });
+}

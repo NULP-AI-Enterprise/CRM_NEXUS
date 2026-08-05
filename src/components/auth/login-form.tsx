@@ -17,40 +17,46 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { SubmitButton } from "@/components/submit-button";
+import { useTranslation } from "@/lib/i18n/context";
+import { ResendVerificationLink } from "@/components/auth/resend-verification-link";
 
 export function LoginForm() {
+  const { t } = useTranslation();
   const [state, formAction] = useActionState(loginAction, null);
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Вхід</CardTitle>
-        <CardDescription>Увійдіть у свій Personal CRM.</CardDescription>
+        <CardTitle>{t("auth.login.title")}</CardTitle>
+        <CardDescription>{t("auth.login.description")}</CardDescription>
         <CardAction>
           <Button variant="link" nativeButton={false} render={<Link href="/register" />}>
-            Реєстрація
+            {t("auth.login.registerLink")}
           </Button>
         </CardAction>
       </CardHeader>
       <form action={formAction}>
         <CardContent className="flex flex-col gap-4">
           <div className="flex flex-col gap-2">
-            <Label htmlFor="email">Email</Label>
+            <Label htmlFor="email">{t("auth.login.email")}</Label>
             <Input id="email" name="email" type="email" placeholder="you@example.com" required autoFocus />
           </div>
           <div className="flex flex-col gap-2">
-            <Label htmlFor="password">Пароль</Label>
+            <Label htmlFor="password">{t("auth.login.password")}</Label>
             <Input id="password" name="password" type="password" required />
           </div>
           {state?.error && (
-            <p className="text-sm text-destructive" role="alert">
-              {state.error}
-            </p>
+            <div className="flex flex-col gap-1.5">
+              <p className="text-sm text-destructive" role="alert">
+                {state.error}
+              </p>
+              {state.unverified && state.email && <ResendVerificationLink email={state.email} />}
+            </div>
           )}
         </CardContent>
         <CardFooter className="mt-4">
-          <SubmitButton className="w-full" pendingText="Вхід...">
-            Увійти
+          <SubmitButton className="w-full" pendingText={t("auth.login.submitPending")}>
+            {t("auth.login.submit")}
           </SubmitButton>
         </CardFooter>
       </form>

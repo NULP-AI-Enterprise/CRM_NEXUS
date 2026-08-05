@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { CATEGORY_COLORS, initials } from "@/lib/contact-display";
 import type { ContactCategory } from "@/generated/prisma/enums";
 import { AddConnectionDialog } from "@/components/graph/add-connection-dialog";
+import { useTranslation } from "@/lib/i18n/context";
 
 interface MiniContact {
   id: string;
@@ -66,6 +67,8 @@ export function MiniNetworkGraph({
   const nodesRef = useRef<GraphNodeItem[]>([]);
   const animRef = useRef<number | null>(null);
 
+  const { t } = useTranslation();
+
   // Combine unique connected nodes
   const allPeers = React.useMemo(() => {
     const map = new Map<string, MiniContact>();
@@ -74,11 +77,11 @@ export function MiniNetworkGraph({
     }
     for (const col of colleagues) {
       if (!map.has(col.id)) {
-        map.set(col.id, { ...col, relationship: "Колега" });
+        map.set(col.id, { ...col, relationship: t("relationship.colleague") });
       }
     }
     return Array.from(map.values());
-  }, [connectedContacts, colleagues]);
+  }, [connectedContacts, colleagues, t]);
 
   useEffect(() => {
     const width = containerRef.current?.clientWidth || 500;
@@ -324,7 +327,7 @@ export function MiniNetworkGraph({
         <div className="flex items-center gap-2">
           <Share2 className="size-3.5 text-zinc-400" />
           <h3 className="text-xs font-semibold text-white uppercase tracking-wider">
-            Локальний граф
+            {t("graph.localGraph")}
           </h3>
           <span className="rounded-md border border-white/[0.06] bg-zinc-900 px-1.5 py-0.5 text-[10px] text-zinc-400 font-mono">
             {allPeers.length}
@@ -336,13 +339,13 @@ export function MiniNetworkGraph({
           className="h-6.5 text-xs bg-zinc-800 hover:bg-zinc-700 text-zinc-200 gap-1 rounded-md"
         >
           <Plus className="size-3" />
-          Додати
+          {t("graph.add")}
         </Button>
       </div>
 
       {allPeers.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-8 text-center text-xs text-zinc-500">
-          <p>Немає прямих зв&apos;язків у графі.</p>
+          <p>{t("graph.noDirectConnections")}</p>
           <Button
             size="sm"
             variant="outline"
@@ -350,7 +353,7 @@ export function MiniNetworkGraph({
             className="mt-2.5 border-zinc-800 bg-zinc-900 text-xs text-zinc-300 gap-1.5"
           >
             <Plus className="size-3" />
-            З&apos;єднати
+            {t("graph.connect")}
           </Button>
         </div>
       ) : (

@@ -5,10 +5,13 @@ import { ArrowLeft, History, Plus } from "lucide-react";
 
 import { auth } from "@/lib/auth";
 import { getContactDetail } from "@/lib/data/contacts";
+import { listCompanies } from "@/lib/data/companies";
+import { getServerTranslation } from "@/lib/i18n/server";
 import { ContactProfileCard } from "@/components/contacts/contact-profile-card";
 import { AddNoteForm } from "@/components/contacts/add-note-form";
 import { InteractionTimeline } from "@/components/contacts/interaction-timeline";
 import { MiniNetworkGraph } from "@/components/graph/mini-network-graph";
+import type { ContactCategory } from "@/generated/prisma/enums";
 
 type ContactPageProps = {
   params: Promise<{ id: string }>;
@@ -20,7 +23,7 @@ export async function generateMetadata({ params }: ContactPageProps): Promise<Me
   if (!session?.user) return {};
 
   const contact = await getContactDetail(session.user.id, id);
-  return { title: contact ? `${contact.fullName} — Knowledge Graph CRM` : "Контакт — CRM" };
+  return { title: contact ? `${contact.fullName} — Knowledge Graph CRM` : "Contact — CRM" };
 }
 
 export default async function ContactPage({ params }: ContactPageProps) {
@@ -30,7 +33,11 @@ export default async function ContactPage({ params }: ContactPageProps) {
     redirect("/login");
   }
 
-  const contact = await getContactDetail(session.user.id, id);
+  const [contact, companies, { t }] = await Promise.all([
+    getContactDetail(session.user.id, id),
+    listCompanies(session.user.id),
+    getServerTranslation(),
+  ]);
   if (!contact) {
     notFound();
   }
@@ -60,8 +67,8 @@ export default async function ContactPage({ params }: ContactPageProps) {
     id: col.id,
     fullName: col.fullName,
     role: col.role,
-    category: col.category as any,
-    relationship: "Колега",
+    category: col.category as ContactCategory,
+    relationship: t("relationship.colleague"),
   }));
 
   return (
@@ -73,12 +80,12 @@ export default async function ContactPage({ params }: ContactPageProps) {
           className="inline-flex items-center gap-1.5 text-xs text-zinc-400 hover:text-white transition-colors bg-zinc-900/60 px-2.5 py-1 rounded-md border border-white/[0.06]"
         >
           <ArrowLeft className="size-3" />
-          Назад до мережі
+          {t("contact.backToNetwork")}
         </Link>
       </div>
 
       {/* Main Profile Info */}
-      <ContactProfileCard contact={contact as any} />
+      <ContactProfileCard contact={contact} companies={companies} />
 
       {/* Mini Network Graph Section */}
       <div className="grid gap-5 lg:grid-cols-2">
@@ -100,7 +107,7 @@ export default async function ContactPage({ params }: ContactPageProps) {
         <div className="rounded-xl border border-white/[0.08] bg-zinc-900/30 p-4 space-y-2.5">
           <div className="flex items-center gap-1.5 text-xs font-semibold text-white uppercase tracking-wider">
             <Plus className="size-3 text-zinc-400" />
-            Додати нотатку
+            {t("addNote.newNoteTitle")}
           </div>
           <AddNoteForm contactId={contact.id} />
         </div>
@@ -110,7 +117,7 @@ export default async function ContactPage({ params }: ContactPageProps) {
       <div className="rounded-xl border border-white/[0.08] bg-zinc-900/30 p-4 space-y-3">
         <div className="flex items-center gap-1.5 text-xs font-semibold text-white uppercase tracking-wider">
           <History className="size-3.5 text-zinc-400" />
-          Історія взаємодій
+          {t("timeline.title")}
         </div>
         <InteractionTimeline interactions={contact.interactions} />
       </div>

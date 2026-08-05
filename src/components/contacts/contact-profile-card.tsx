@@ -14,16 +14,18 @@ import {
   ExternalLink,
   Target,
   MessageSquare,
+  Pencil,
 } from "lucide-react";
 import { toast } from "sonner";
 
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { CATEGORY_COLORS, CATEGORY_LABELS, initials } from "@/lib/contact-display";
-import type { ContactCategory } from "@/generated/prisma/enums";
+import { CATEGORY_COLORS, initials } from "@/lib/contact-display";
+import { useTranslation } from "@/lib/i18n/context";
 import type { CompanyModel, ContactModel, ContactConnectionModel } from "@/generated/prisma/models";
 import { AddConnectionDialog } from "@/components/graph/add-connection-dialog";
+import { ContactFormDialog } from "@/components/contacts/contact-form-dialog";
+import { ConfirmDeleteDialog } from "@/components/confirm-delete-dialog";
 
 type ConnectionWithContact = ContactConnectionModel & {
   toContact?: ContactModel & { company?: CompanyModel | null };
@@ -44,9 +46,18 @@ type ContactDetailType = ContactModel & {
   }>;
 };
 
-export function ContactProfileCard({ contact }: { contact: ContactDetailType }) {
+export function ContactProfileCard({
+  contact,
+  companies,
+}: {
+  contact: ContactDetailType;
+  companies: Array<{ id: string; name: string }>;
+}) {
+  const { t } = useTranslation();
   const router = useRouter();
   const [isConnectOpen, setIsConnectOpen] = useState(false);
+  const [isEditOpen, setIsEditOpen] = useState(false);
+  const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [isDeleting, startDeleteTransition] = useTransition();
 
   const colors = CATEGORY_COLORS[contact.category] || CATEGORY_COLORS.OTHER;
@@ -78,14 +89,25 @@ export function ContactProfileCard({ contact }: { contact: ContactDetailType }) 
           method: "DELETE",
         });
         if (!res.ok) {
-          throw new Error("Не вдалося видалити зв'язок");
+          throw new Error(t("contact.connectionRemoveError"));
         }
-        toast.success("Зв'язок видалено з графу");
+        toast.success(t("contact.connectionRemoved"));
         router.refresh();
       } catch (err) {
-        toast.error(err instanceof Error ? err.message : "Помилка видалення");
+        toast.error(err instanceof Error ? err.message : t("common.unknownError"));
       }
     });
+  };
+
+  const handleDeleteContact = async () => {
+    try {
+      const res = await fetch(`/api/contacts/${contact.id}`, { method: "DELETE" });
+      if (!res.ok) throw new Error(t("common.unknownError"));
+      toast.success(t("contact.delete.success"));
+      router.push("/dashboard");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : t("common.unknownError"));
+    }
   };
 
   return (
@@ -108,7 +130,7 @@ export function ContactProfileCard({ contact }: { contact: ContactDetailType }) 
                     className="size-1.5 rounded-full"
                     style={{ backgroundColor: colors.dot }}
                   />
-                  {CATEGORY_LABELS[contact.category]}
+                  {t(`category.${contact.category}`)}
                 </span>
               </div>
 
@@ -130,18 +152,37 @@ export function ContactProfileCard({ contact }: { contact: ContactDetailType }) 
             </div>
           </div>
 
-          {/* Value score pill */}
-          {contact.usefulnessScore != null && (
-            <div className="flex items-center gap-2 rounded-lg bg-zinc-900 border border-white/[0.08] px-3 py-1.5 text-zinc-200">
-              <Star className="size-4 text-zinc-400" />
-              <div>
-                <div className="text-[10px] uppercase text-zinc-500 font-medium">Оцінка цінності</div>
-                <div className="text-sm font-semibold font-mono text-white leading-tight">
-                  {contact.usefulnessScore} / 10
+          <div className="flex items-center gap-2">
+            {contact.usefulnessScore != null && (
+              <div className="flex items-center gap-2 rounded-lg bg-zinc-900 border border-white/[0.08] px-3 py-1.5 text-zinc-200">
+                <Star className="size-4 text-zinc-400" />
+                <div>
+                  <div className="text-[10px] uppercase text-zinc-500 font-medium">{t("contact.valueScore")}</div>
+                  <div className="text-sm font-semibold font-mono text-white leading-tight">
+                    {contact.usefulnessScore} / 10
+                  </div>
                 </div>
               </div>
-            </div>
-          )}
+            )}
+            <Button
+              size="icon"
+              variant="outline"
+              onClick={() => setIsEditOpen(true)}
+              className="size-8 border-white/[0.08] bg-zinc-900 text-zinc-300 hover:text-white"
+              title={t("common.edit")}
+            >
+              <Pencil className="size-3.5" />
+            </Button>
+            <Button
+              size="icon"
+              variant="outline"
+              onClick={() => setIsDeleteOpen(true)}
+              className="size-8 border-white/[0.08] bg-zinc-900 text-zinc-400 hover:text-red-400"
+              title={t("common.delete")}
+            >
+              <Trash2 className="size-3.5" />
+            </Button>
+          </div>
         </div>
       </div>
 
@@ -151,10 +192,10 @@ export function ContactProfileCard({ contact }: { contact: ContactDetailType }) 
         <div className="rounded-xl border border-white/[0.08] bg-zinc-900/30 p-4 space-y-1.5">
           <div className="flex items-center gap-1.5 text-[11px] font-medium text-zinc-400 uppercase tracking-wider">
             <Brain className="size-3.5 text-zinc-500" />
-            Характер / Стиль
+            {t("contact.temperament")}
           </div>
           <p className="text-xs text-zinc-200 leading-relaxed">
-            {contact.temperament || "Не зазначено. Додайте нотатку для аналізу."}
+            {contact.temperament || t("contact.temperamentEmpty")}
           </p>
         </div>
 
@@ -162,10 +203,10 @@ export function ContactProfileCard({ contact }: { contact: ContactDetailType }) 
         <div className="rounded-xl border border-white/[0.08] bg-zinc-900/30 p-4 space-y-1.5">
           <div className="flex items-center gap-1.5 text-[11px] font-medium text-zinc-400 uppercase tracking-wider">
             <Target className="size-3.5 text-zinc-500" />
-            Потреби та запити
+            {t("contact.needs")}
           </div>
           <p className="text-xs text-zinc-200 leading-relaxed">
-            {contact.needs || "Не виявлено чітких потреб у попередніх записах."}
+            {contact.needs || t("contact.needsEmpty")}
           </p>
         </div>
 
@@ -173,10 +214,10 @@ export function ContactProfileCard({ contact }: { contact: ContactDetailType }) 
         <div className="rounded-xl border border-white/[0.08] bg-zinc-900/30 p-4 space-y-1.5">
           <div className="flex items-center gap-1.5 text-[11px] font-medium text-zinc-400 uppercase tracking-wider">
             <Sparkles className="size-3.5 text-zinc-500" />
-            Потенціал співпраці
+            {t("contact.valuePotential")}
           </div>
           <p className="text-xs text-zinc-200 leading-relaxed">
-            {contact.valuePotential || "Стратегічний потенціал розраховується з нотаток."}
+            {contact.valuePotential || t("contact.valuePotentialEmpty")}
           </p>
         </div>
       </div>
@@ -186,7 +227,7 @@ export function ContactProfileCard({ contact }: { contact: ContactDetailType }) 
         <div className="rounded-xl border border-white/[0.08] bg-zinc-900/30 p-4 space-y-1.5">
           <div className="flex items-center gap-1.5 text-[11px] font-medium text-zinc-400 uppercase tracking-wider">
             <MessageSquare className="size-3.5 text-zinc-500" />
-            Саммарі контакту
+            {t("contact.fullSummary")}
           </div>
           <p className="text-xs leading-relaxed text-zinc-300 whitespace-pre-wrap">
             {contact.fullSummary}
@@ -200,7 +241,7 @@ export function ContactProfileCard({ contact }: { contact: ContactDetailType }) 
           <div className="flex items-center gap-2">
             <Link2 className="size-3.5 text-zinc-400" />
             <h3 className="text-xs font-semibold text-white uppercase tracking-wider">
-              Зв&apos;язки у графі
+              {t("contact.connectionsTitle")}
             </h3>
             <span className="rounded-md border border-white/[0.06] bg-zinc-900 px-1.5 py-0.5 text-[10px] text-zinc-400 font-mono">
               {directConnections.length}
@@ -212,20 +253,18 @@ export function ContactProfileCard({ contact }: { contact: ContactDetailType }) 
             className="bg-white hover:bg-zinc-200 text-zinc-950 text-xs h-7 px-3 gap-1.5 rounded-md font-medium"
           >
             <Plus className="size-3" />
-            Додати зв&apos;язок
+            {t("contact.addConnection")}
           </Button>
         </div>
 
         {directConnections.length === 0 ? (
           <div className="rounded-lg border border-dashed border-zinc-800 p-6 text-center text-xs text-zinc-500">
-            Немає прямих зв&apos;язків. Натисніть &quot;Додати зв&apos;язок&quot; для з&apos;єднання у графі.
+            {t("contact.noConnections")}
           </div>
         ) : (
           <div className="grid gap-2 sm:grid-cols-2">
             {directConnections.map((conn) => {
               const peer = conn.peer!;
-              const peerCategory = (peer.category as ContactCategory) || "OTHER";
-              const peerColors = CATEGORY_COLORS[peerCategory] || CATEGORY_COLORS.OTHER;
 
               return (
                 <div
@@ -248,11 +287,11 @@ export function ContactProfileCard({ contact }: { contact: ContactDetailType }) 
                           {peer.fullName}
                         </Link>
                         <span className="text-[10px] text-zinc-400 rounded bg-zinc-900 px-1 py-0.2 border border-white/[0.06]">
-                          {conn.relationship || "Зв'язок"}
+                          {conn.relationship || t("contact.defaultRelationship")}
                         </span>
                       </div>
                       <p className="text-zinc-500 text-[11px] truncate">
-                        {peer.role || peer.companyName || "Контакт"}
+                        {peer.role || peer.companyName || t("contact.defaultRole")}
                       </p>
                     </div>
                   </div>
@@ -261,7 +300,7 @@ export function ContactProfileCard({ contact }: { contact: ContactDetailType }) 
                     <Link
                       href={`/contacts/${peer.id}`}
                       className="p-1 text-zinc-400 hover:text-white rounded"
-                      title="Профіль"
+                      title={t("contact.viewProfile")}
                     >
                       <ExternalLink className="size-3" />
                     </Link>
@@ -269,7 +308,7 @@ export function ContactProfileCard({ contact }: { contact: ContactDetailType }) 
                       onClick={() => handleDeleteConnection(conn.id)}
                       disabled={isDeleting}
                       className="p-1 text-zinc-500 hover:text-red-400 rounded transition-colors"
-                      title="Видалити зв'язок"
+                      title={t("contact.removeConnection")}
                     >
                       <Trash2 className="size-3" />
                     </button>
@@ -289,6 +328,20 @@ export function ContactProfileCard({ contact }: { contact: ContactDetailType }) 
         onSuccess={() => {
           router.refresh();
         }}
+      />
+
+      <ContactFormDialog
+        open={isEditOpen}
+        onOpenChange={setIsEditOpen}
+        companies={companies}
+        contact={contact}
+      />
+
+      <ConfirmDeleteDialog
+        open={isDeleteOpen}
+        onOpenChange={setIsDeleteOpen}
+        description={t("contact.delete.confirm", { name: contact.fullName })}
+        onConfirm={handleDeleteContact}
       />
     </div>
   );

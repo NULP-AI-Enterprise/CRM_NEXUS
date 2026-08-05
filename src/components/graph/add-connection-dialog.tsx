@@ -16,7 +16,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { RELATIONSHIP_PRESETS } from "@/lib/contact-display";
+import { RELATIONSHIP_PRESET_KEYS } from "@/lib/contact-display";
+import { useTranslation } from "@/lib/i18n/context";
 
 interface ContactOption {
   id: string;
@@ -40,8 +41,9 @@ export function AddConnectionDialog({
   availableContacts,
   onSuccess,
 }: AddConnectionDialogProps) {
+  const { t } = useTranslation();
   const [toContactId, setToContactId] = useState<string>("");
-  const [relationship, setRelationship] = useState<string>("Колега");
+  const [relationship, setRelationship] = useState<string>(t("relationship.colleague"));
   const [strength, setStrength] = useState<number>(3);
   const [notes, setNotes] = useState<string>("");
   const [isPending, startTransition] = useTransition();
@@ -51,7 +53,7 @@ export function AddConnectionDialog({
 
   const handleSubmit = () => {
     if (!toContactId) {
-      toast.error("Оберіть контакт для зв'язку");
+      toast.error(t("connection.selectError"));
       return;
     }
 
@@ -71,16 +73,16 @@ export function AddConnectionDialog({
 
         const data = await res.json();
         if (!res.ok) {
-          throw new Error(data?.error ?? "Помилка при створенні зв'язку");
+          throw new Error(data?.error ?? t("connection.createError"));
         }
 
-        toast.success("Зв'язок збережено");
+        toast.success(t("connection.createSuccess"));
         onOpenChange(false);
         setToContactId("");
         setNotes("");
         onSuccess?.();
       } catch (err) {
-        toast.error(err instanceof Error ? err.message : "Помилка додавання зв'язку");
+        toast.error(err instanceof Error ? err.message : t("connection.createError"));
       }
     });
   };
@@ -94,19 +96,16 @@ export function AddConnectionDialog({
               <Link2 className="size-3.5" />
             </div>
             <DialogTitle className="text-sm font-semibold text-white">
-              Новий зв&apos;язок у графі
+              {t("connection.title")}
             </DialogTitle>
           </div>
-          <DialogDescription className="text-zinc-400 text-xs">
-            З&apos;єднайте <span className="font-medium text-zinc-200">{fromContact.name}</span> з
-            іншим контактом у системі.
-          </DialogDescription>
+          <DialogDescription className="text-zinc-400 text-xs">{t("connection.description", { name: fromContact.name })}</DialogDescription>
         </DialogHeader>
 
         <div className="flex flex-col gap-3.5 py-1 text-xs">
           {/* Target Contact Selector */}
           <div className="flex flex-col gap-1">
-            <Label className="text-xs font-medium text-zinc-300">Оберіть контакт</Label>
+            <Label className="text-xs font-medium text-zinc-300">{t("connection.selectContact")}</Label>
             <select
               value={toContactId}
               onChange={(e) => setToContactId(e.target.value)}
@@ -114,7 +113,7 @@ export function AddConnectionDialog({
               disabled={isPending}
             >
               <option value="" disabled>
-                -- Оберіть контакт --
+                {t("connection.selectPlaceholder")}
               </option>
               {candidateContacts.map((c) => (
                 <option key={c.id} value={c.id}>
@@ -126,27 +125,27 @@ export function AddConnectionDialog({
 
           {/* Relationship Presets */}
           <div className="flex flex-col gap-1.5">
-            <Label className="text-xs font-medium text-zinc-300">Тип відносин</Label>
+            <Label className="text-xs font-medium text-zinc-300">{t("connection.relationshipType")}</Label>
             <div className="flex flex-wrap gap-1">
-              {RELATIONSHIP_PRESETS.map((preset) => (
+              {RELATIONSHIP_PRESET_KEYS.map((key) => (
                 <button
-                  key={preset}
+                  key={key}
                   type="button"
-                  onClick={() => setRelationship(preset)}
+                  onClick={() => setRelationship(t(key))}
                   className={`rounded px-2 py-0.5 text-xs transition-colors ${
-                    relationship === preset
+                    relationship === t(key)
                       ? "bg-zinc-100 text-zinc-950 font-medium"
                       : "bg-zinc-950 border border-zinc-800 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800"
                   }`}
                 >
-                  {preset}
+                  {t(key)}
                 </button>
               ))}
             </div>
             <Input
               value={relationship}
               onChange={(e) => setRelationship(e.target.value)}
-              placeholder="Або введіть свій тип зв'язку..."
+              placeholder={t("connection.relationshipPlaceholder")}
               className="mt-1 bg-zinc-950 border-zinc-800 text-xs h-7 rounded-md"
               disabled={isPending}
             />
@@ -155,7 +154,7 @@ export function AddConnectionDialog({
           {/* Strength (1-5) */}
           <div className="flex flex-col gap-1.5">
             <div className="flex items-center justify-between">
-              <Label className="text-xs font-medium text-zinc-300">Сила зв&apos;язку</Label>
+              <Label className="text-xs font-medium text-zinc-300">{t("connection.strength")}</Label>
               <span className="text-xs text-zinc-400 font-mono">{strength} / 5</span>
             </div>
             <div className="flex items-center gap-1.5">
@@ -179,11 +178,11 @@ export function AddConnectionDialog({
 
           {/* Optional Notes */}
           <div className="flex flex-col gap-1">
-            <Label className="text-xs font-medium text-zinc-300">Нотатки</Label>
+            <Label className="text-xs font-medium text-zinc-300">{t("connection.notes")}</Label>
             <Textarea
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              placeholder="Контекст або деталі знайомства..."
+              placeholder={t("connection.notesPlaceholder")}
               className="min-h-14 resize-none bg-zinc-950 border-zinc-800 text-xs rounded-md"
               disabled={isPending}
             />
@@ -198,7 +197,7 @@ export function AddConnectionDialog({
             disabled={isPending}
             className="border-zinc-800 bg-zinc-900 text-zinc-300 hover:bg-zinc-800 h-7 text-xs"
           >
-            Скасувати
+            {t("common.cancel")}
           </Button>
           <Button
             size="sm"
@@ -207,7 +206,7 @@ export function AddConnectionDialog({
             className="bg-white hover:bg-zinc-200 text-zinc-950 gap-1.5 h-7 text-xs font-medium"
           >
             {isPending ? <Loader2 className="size-3 animate-spin" /> : <Plus className="size-3" />}
-            {isPending ? "Збереження..." : "Додати зв'язок"}
+            {isPending ? t("connection.submitPending") : t("connection.submit")}
           </Button>
         </DialogFooter>
       </DialogContent>

@@ -17,10 +17,11 @@ import {
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { CATEGORY_COLORS, CATEGORY_LABELS, initials } from "@/lib/contact-display";
+import { CATEGORY_COLORS, initials } from "@/lib/contact-display";
 import type { ContactCategory } from "@/generated/prisma/enums";
-import type { FullGraphData, GraphNode, GraphContactNode, GraphCompanyNode, GraphLink } from "@/lib/data/graph";
+import type { FullGraphData, GraphNode, GraphContactNode, GraphLink } from "@/lib/data/graph";
 import { NodeInspector } from "@/components/graph/node-inspector";
+import { useTranslation } from "@/lib/i18n/context";
 
 export type SimNode = GraphNode & {
   x: number;
@@ -60,6 +61,8 @@ export function NetworkGraph({ initialData }: NetworkGraphProps) {
   const [tooltipPos, setTooltipPos] = useState<{ x: number; y: number } | null>(null);
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
   const [showControlsMenu, setShowControlsMenu] = useState<boolean>(false);
+
+  const { t } = useTranslation();
 
   // Camera transform state (pan & zoom)
   const cameraRef = useRef<{ x: number; y: number; zoom: number }>({ x: 0, y: 0, zoom: 1 });
@@ -290,6 +293,81 @@ export function NetworkGraph({ initialData }: NetworkGraphProps) {
       }
     }
     return null;
+  };
+
+  // Declared before the render effect below since that effect's `render`
+  // closure calls it every frame — must exist before the closure is created,
+  // not just before it first runs.
+  const renderMiniMap = () => {
+    const miniCanvas = miniMapCanvasRef.current;
+    if (!miniCanvas) return;
+    const miniCtx = miniCanvas.getContext("2d");
+    if (!miniCtx) return;
+
+    const mw = miniCanvas.width;
+    const mh = miniCanvas.height;
+    miniCtx.clearRect(0, 0, mw, mh);
+
+    if (simNodesRef.current.length === 0) return;
+
+    let minX = Infinity,
+      maxX = -Infinity,
+      minY = Infinity,
+      maxY = -Infinity;
+    for (const n of simNodesRef.current) {
+      minX = Math.min(minX, n.x);
+      maxX = Math.max(maxX, n.x);
+      minY = Math.min(minY, n.y);
+      maxY = Math.max(maxY, n.y);
+    }
+
+    const pad = 30;
+    const gw = maxX - minX + pad * 2 || 1;
+    const gh = maxY - minY + pad * 2 || 1;
+    const scale = Math.min(mw / gw, mh / gh);
+
+    const mapX = (x: number) => (x - minX + pad) * scale;
+    const mapY = (y: number) => (y - minY + pad) * scale;
+
+    miniCtx.strokeStyle = "rgba(255, 255, 255, 0.05)";
+    miniCtx.lineWidth = 0.8;
+    for (const l of simLinksRef.current) {
+      if (!l.sourceNode || !l.targetNode) continue;
+      miniCtx.beginPath();
+      miniCtx.moveTo(mapX(l.sourceNode.x), mapY(l.sourceNode.y));
+      miniCtx.lineTo(mapX(l.targetNode.x), mapY(l.targetNode.y));
+      miniCtx.stroke();
+    }
+
+    for (const n of simNodesRef.current) {
+      miniCtx.beginPath();
+      miniCtx.arc(mapX(n.x), mapY(n.y), n.nodeType === "company" ? 2 : 1.5, 0, Math.PI * 2);
+      miniCtx.fillStyle =
+        n.nodeType === "company"
+          ? "#71717A"
+          : CATEGORY_COLORS[n.category]?.dot || "#A1A1AA";
+      miniCtx.fill();
+    }
+
+    if (containerRef.current) {
+      const { x: camX, y: camY, zoom } = cameraRef.current;
+      const w = containerRef.current.clientWidth;
+      const h = containerRef.current.clientHeight;
+
+      const vpLeft = -camX / zoom;
+      const vpTop = -camY / zoom;
+      const vpRight = (w - camX) / zoom;
+      const vpBottom = (h - camY) / zoom;
+
+      miniCtx.strokeStyle = "rgba(255, 255, 255, 0.4)";
+      miniCtx.lineWidth = 1;
+      miniCtx.strokeRect(
+        mapX(vpLeft),
+        mapY(vpTop),
+        (vpRight - vpLeft) * scale,
+        (vpBottom - vpTop) * scale
+      );
+    }
   };
 
   // Main Canvas Render & Simulation Loop
@@ -708,78 +786,6 @@ export function NetworkGraph({ initialData }: NetworkGraphProps) {
     };
   }, [isPhysicsPaused, showParticles, selectedNode, hoveredNode]);
 
-  const renderMiniMap = () => {
-    const miniCanvas = miniMapCanvasRef.current;
-    if (!miniCanvas) return;
-    const miniCtx = miniCanvas.getContext("2d");
-    if (!miniCtx) return;
-
-    const mw = miniCanvas.width;
-    const mh = miniCanvas.height;
-    miniCtx.clearRect(0, 0, mw, mh);
-
-    if (simNodesRef.current.length === 0) return;
-
-    let minX = Infinity,
-      maxX = -Infinity,
-      minY = Infinity,
-      maxY = -Infinity;
-    for (const n of simNodesRef.current) {
-      minX = Math.min(minX, n.x);
-      maxX = Math.max(maxX, n.x);
-      minY = Math.min(minY, n.y);
-      maxY = Math.max(maxY, n.y);
-    }
-
-    const pad = 30;
-    const gw = maxX - minX + pad * 2 || 1;
-    const gh = maxY - minY + pad * 2 || 1;
-    const scale = Math.min(mw / gw, mh / gh);
-
-    const mapX = (x: number) => (x - minX + pad) * scale;
-    const mapY = (y: number) => (y - minY + pad) * scale;
-
-    miniCtx.strokeStyle = "rgba(255, 255, 255, 0.05)";
-    miniCtx.lineWidth = 0.8;
-    for (const l of simLinksRef.current) {
-      if (!l.sourceNode || !l.targetNode) continue;
-      miniCtx.beginPath();
-      miniCtx.moveTo(mapX(l.sourceNode.x), mapY(l.sourceNode.y));
-      miniCtx.lineTo(mapX(l.targetNode.x), mapY(l.targetNode.y));
-      miniCtx.stroke();
-    }
-
-    for (const n of simNodesRef.current) {
-      miniCtx.beginPath();
-      miniCtx.arc(mapX(n.x), mapY(n.y), n.nodeType === "company" ? 2 : 1.5, 0, Math.PI * 2);
-      miniCtx.fillStyle =
-        n.nodeType === "company"
-          ? "#71717A"
-          : CATEGORY_COLORS[n.category]?.dot || "#A1A1AA";
-      miniCtx.fill();
-    }
-
-    if (containerRef.current) {
-      const { x: camX, y: camY, zoom } = cameraRef.current;
-      const w = containerRef.current.clientWidth;
-      const h = containerRef.current.clientHeight;
-
-      const vpLeft = -camX / zoom;
-      const vpTop = -camY / zoom;
-      const vpRight = (w - camX) / zoom;
-      const vpBottom = (h - camY) / zoom;
-
-      miniCtx.strokeStyle = "rgba(255, 255, 255, 0.4)";
-      miniCtx.lineWidth = 1;
-      miniCtx.strokeRect(
-        mapX(vpLeft),
-        mapY(vpTop),
-        (vpRight - vpLeft) * scale,
-        (vpBottom - vpTop) * scale
-      );
-    }
-  };
-
   const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
     const rect = canvasRef.current?.getBoundingClientRect();
     if (!rect) return;
@@ -949,7 +955,7 @@ export function NetworkGraph({ initialData }: NetworkGraphProps) {
           <Input
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Пошук у графі..."
+            placeholder={t("graph.searchPlaceholder")}
             className="pl-8 pr-3 h-7 bg-zinc-900/90 border-white/[0.08] text-xs text-white placeholder:text-zinc-500 rounded-md focus:border-zinc-500"
           />
         </div>
@@ -963,7 +969,7 @@ export function NetworkGraph({ initialData }: NetworkGraphProps) {
                 : "text-zinc-400 hover:text-zinc-200"
             }`}
           >
-            Всі ({graphData.stats.totalContacts})
+            {t("graph.all")} ({graphData.stats.totalContacts})
           </button>
           {(["VIP", "INVESTOR", "LEAD", "COLLEAGUE", "FRIEND", "HR"] as ContactCategory[]).map((cat) => {
             const count = graphData.stats.categoryCounts[cat] || 0;
@@ -982,7 +988,7 @@ export function NetworkGraph({ initialData }: NetworkGraphProps) {
                   className="size-1.5 rounded-full"
                   style={{ backgroundColor: CATEGORY_COLORS[cat].dot }}
                 />
-                {CATEGORY_LABELS[cat]}
+                {t(`category.${cat}`)}
                 <span className="text-[10px] text-zinc-500 font-mono">{count}</span>
               </button>
             );
@@ -996,7 +1002,7 @@ export function NetworkGraph({ initialData }: NetworkGraphProps) {
           className="h-7 px-2 bg-zinc-900/90 border-white/[0.08] text-zinc-300 hover:text-white rounded-md text-xs gap-1.5"
         >
           <Sliders className="size-3" />
-          <span>Фільтри</span>
+          <span>{t("graph.filters")}</span>
         </Button>
       </div>
 
@@ -1006,7 +1012,7 @@ export function NetworkGraph({ initialData }: NetworkGraphProps) {
           <div className="flex items-center justify-between border-b border-white/[0.06] pb-1.5">
             <span className="font-medium text-white flex items-center gap-1.5 text-xs">
               <Sliders className="size-3 text-zinc-400" />
-              Параметри
+              {t("graph.parameters")}
             </span>
             <button
               onClick={() => setShowControlsMenu(false)}
@@ -1018,7 +1024,7 @@ export function NetworkGraph({ initialData }: NetworkGraphProps) {
 
           <div className="space-y-1">
             <div className="flex justify-between text-zinc-400 text-[11px]">
-              <span>Мін. оцінка:</span>
+              <span>{t("graph.minScore")}</span>
               <span className="font-mono text-zinc-200">{minScore} / 10</span>
             </div>
             <input
@@ -1034,7 +1040,7 @@ export function NetworkGraph({ initialData }: NetworkGraphProps) {
           <div className="flex items-center justify-between py-0.5">
             <span className="text-zinc-300 flex items-center gap-1.5 text-xs">
               <Building2 className="size-3 text-zinc-400" />
-              Компанії
+              {t("graph.companies")}
             </span>
             <button
               onClick={() => setShowCompanyNodes(!showCompanyNodes)}
@@ -1053,7 +1059,7 @@ export function NetworkGraph({ initialData }: NetworkGraphProps) {
           <div className="flex items-center justify-between py-0.5">
             <span className="text-zinc-300 flex items-center gap-1.5 text-xs">
               <Zap className="size-3 text-zinc-400" />
-              Анімація
+              {t("graph.animation")}
             </span>
             <button
               onClick={() => setShowParticles(!showParticles)}
@@ -1070,14 +1076,14 @@ export function NetworkGraph({ initialData }: NetworkGraphProps) {
           </div>
 
           <div className="flex items-center justify-between pt-1 border-t border-white/[0.06]">
-            <span className="text-zinc-400 text-[11px]">Фізика</span>
+            <span className="text-zinc-400 text-[11px]">{t("graph.physics")}</span>
             <Button
               size="sm"
               variant="outline"
               onClick={() => setIsPhysicsPaused(!isPhysicsPaused)}
               className="h-5 text-[10px] px-2 bg-zinc-800 border-zinc-700 text-zinc-300 hover:text-white"
             >
-              {isPhysicsPaused ? "Відновити" : "Заморозити"}
+              {isPhysicsPaused ? t("graph.physicsResume") : t("graph.physicsFreeze")}
             </Button>
           </div>
         </div>
@@ -1088,19 +1094,19 @@ export function NetworkGraph({ initialData }: NetworkGraphProps) {
         <div className="flex items-center gap-1.5 text-zinc-300">
           <span className="size-1.5 rounded-full bg-zinc-400" />
           <span className="text-white font-medium tabular-nums">{filteredNodes.length}</span>
-          <span className="text-zinc-500">вузлів</span>
+          <span className="text-zinc-500">{t("graph.nodesUnit")}</span>
         </div>
         <span className="text-zinc-700">•</span>
         <div className="flex items-center gap-1 text-zinc-300">
           <span className="text-white font-medium tabular-nums">{filteredLinks.length}</span>
-          <span className="text-zinc-500">зв&apos;язків</span>
+          <span className="text-zinc-500">{t("graph.linksUnit")}</span>
         </div>
         <span className="text-zinc-700">•</span>
         <button
           onClick={refreshGraph}
           disabled={isRefreshing}
           className="text-zinc-400 hover:text-white p-0.5 transition-colors"
-          title="Оновити граф"
+          title={t("graph.refresh")}
         >
           <RefreshCw className={`size-3 ${isRefreshing ? "animate-spin text-zinc-200" : ""}`} />
         </button>
@@ -1113,7 +1119,7 @@ export function NetworkGraph({ initialData }: NetworkGraphProps) {
           variant="ghost"
           onClick={() => handleZoom("in")}
           className="size-6 rounded text-zinc-400 hover:text-white hover:bg-white/10"
-          title="Збільшити"
+          title={t("graph.zoomIn")}
         >
           <ZoomIn className="size-3.5" />
         </Button>
@@ -1122,7 +1128,7 @@ export function NetworkGraph({ initialData }: NetworkGraphProps) {
           variant="ghost"
           onClick={() => handleZoom("out")}
           className="size-6 rounded text-zinc-400 hover:text-white hover:bg-white/10"
-          title="Зменшити"
+          title={t("graph.zoomOut")}
         >
           <ZoomOut className="size-3.5" />
         </Button>
@@ -1131,7 +1137,7 @@ export function NetworkGraph({ initialData }: NetworkGraphProps) {
           variant="ghost"
           onClick={fitToScreen}
           className="size-6 rounded text-zinc-400 hover:text-white hover:bg-white/10"
-          title="Центрувати"
+          title={t("graph.center")}
         >
           <RotateCcw className="size-3" />
         </Button>
@@ -1141,7 +1147,7 @@ export function NetworkGraph({ initialData }: NetworkGraphProps) {
           variant="ghost"
           onClick={toggleFullscreen}
           className="size-6 rounded text-zinc-400 hover:text-white hover:bg-white/10"
-          title="Повний екран"
+          title={t("graph.fullscreen")}
         >
           {isFullscreen ? <Minimize2 className="size-3" /> : <Maximize2 className="size-3" />}
         </Button>
@@ -1175,7 +1181,7 @@ export function NetworkGraph({ initialData }: NetworkGraphProps) {
                     className="size-1.5 rounded-full"
                     style={{ backgroundColor: CATEGORY_COLORS[hoveredNode.category].dot }}
                   />
-                  {CATEGORY_LABELS[hoveredNode.category]}
+                  {t(`category.${hoveredNode.category}`)}
                 </span>
               </div>
               {hoveredNode.role && (
@@ -1194,7 +1200,7 @@ export function NetworkGraph({ initialData }: NetworkGraphProps) {
             <div className="space-y-0.5">
               <div className="font-medium text-white">{hoveredNode.name}</div>
               <p className="text-zinc-400 text-[11px]">
-                {hoveredNode.contactCount} контактів
+                {`${hoveredNode.contactCount} ${t("graph.contactsUnit")}`}
               </p>
             </div>
           )}

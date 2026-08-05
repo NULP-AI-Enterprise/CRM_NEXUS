@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import type { ContactCategory, InteractionType } from "@/generated/prisma/enums";
+import type { ContactCategory } from "@/generated/prisma/enums";
 
 export interface GraphContactNode {
   id: string;

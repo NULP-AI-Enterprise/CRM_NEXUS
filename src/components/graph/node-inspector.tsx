@@ -18,9 +18,10 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { CATEGORY_LABELS, CATEGORY_COLORS, initials } from "@/lib/contact-display";
+import { CATEGORY_COLORS, initials } from "@/lib/contact-display";
 import type { GraphNode, GraphContactNode, GraphCompanyNode, GraphLink } from "@/lib/data/graph";
 import { AddConnectionDialog } from "@/components/graph/add-connection-dialog";
+import { useTranslation } from "@/lib/i18n/context";
 
 interface NodeInspectorProps {
   node: GraphNode | null;
@@ -40,6 +41,8 @@ export function NodeInspector({
   const [quickNote, setQuickNote] = useState("");
   const [isSubmittingNote, startNoteTransition] = useTransition();
   const [isConnectDialogOpen, setIsConnectDialogOpen] = useState(false);
+
+  const { t } = useTranslation();
 
   if (!node) return null;
 
@@ -79,14 +82,14 @@ export function NodeInspector({
 
         const data = await res.json();
         if (!res.ok) {
-          throw new Error(data?.error ?? "Не вдалося зберегти нотатку");
+          throw new Error(data?.error ?? t("inspector.noteSaveError"));
         }
 
-        toast.success("Нотатку збережено");
+        toast.success(t("inspector.noteSaved"));
         setQuickNote("");
         onRefreshGraph();
       } catch (err) {
-        toast.error(err instanceof Error ? err.message : "Помилка збереження");
+        toast.error(err instanceof Error ? err.message : t("inspector.noteSaveError"));
       }
     });
   };
@@ -112,7 +115,7 @@ export function NodeInspector({
               <Building2 className="size-3 text-zinc-400" />
             )}
             <span className="text-[11px] font-medium tracking-wide uppercase text-zinc-400">
-              {isContact ? "Контакт" : "Компанія"}
+              {isContact ? t("inspector.contact") : t("inspector.company")}
             </span>
           </div>
           <button
@@ -158,7 +161,7 @@ export function NodeInspector({
                     className="size-1.5 rounded-full"
                     style={{ backgroundColor: CATEGORY_COLORS[contactNode.category].dot }}
                   />
-                  {CATEGORY_LABELS[contactNode.category]}
+                  {t(`category.${contactNode.category}`)}
                 </span>
 
                 {contactNode.usefulnessScore != null && (
@@ -168,7 +171,7 @@ export function NodeInspector({
                 )}
 
                 <span className="inline-flex items-center gap-1 rounded-md border border-white/[0.06] bg-zinc-950 px-2 py-0.5 text-[10px] text-zinc-400">
-                  {connectedNeighbors.length} зв&apos;язків
+                  {`${connectedNeighbors.length} ${t("inspector.connectionsCount")}`}
                 </span>
               </div>
             </div>
@@ -188,7 +191,7 @@ export function NodeInspector({
                     <p className="text-[11px] text-zinc-400">{companyNode.industry}</p>
                   )}
                   <p className="text-[10px] text-zinc-500 mt-0.5 font-mono">
-                    {companyNode.contactCount} контактів
+                    {`${companyNode.contactCount} ${t("graph.contactsUnit")}`}
                   </p>
                 </div>
               </div>
@@ -205,26 +208,26 @@ export function NodeInspector({
             <div className="space-y-1.5 rounded-lg border border-white/[0.06] bg-zinc-950/50 p-2.5 text-xs">
               <div className="flex items-center gap-1.5 text-[10px] font-medium text-zinc-400 uppercase tracking-wider">
                 <Compass className="size-3 text-zinc-500" />
-                Контекст
+                {t("inspector.context")}
               </div>
 
               {contactNode.temperament && (
                 <div className="text-[11px]">
-                  <span className="text-zinc-500">Стиль: </span>
+                  <span className="text-zinc-500">{t("inspector.style")} </span>
                   <span className="text-zinc-300">{contactNode.temperament}</span>
                 </div>
               )}
 
               {contactNode.needs && (
                 <div className="text-[11px]">
-                  <span className="text-zinc-500">Потреби: </span>
+                  <span className="text-zinc-500">{t("inspector.needs")} </span>
                   <span className="text-zinc-300">{contactNode.needs}</span>
                 </div>
               )}
 
               {contactNode.valuePotential && (
                 <div className="text-[11px]">
-                  <span className="text-zinc-500">Потенціал: </span>
+                  <span className="text-zinc-500">{t("inspector.potential")} </span>
                   <span className="text-zinc-300">{contactNode.valuePotential}</span>
                 </div>
               )}
@@ -242,7 +245,7 @@ export function NodeInspector({
             <div className="flex items-center justify-between">
               <span className="flex items-center gap-1.5 text-[10px] font-medium text-zinc-400 uppercase tracking-wider">
                 <Users className="size-3 text-zinc-500" />
-                Зв&apos;язки ({connectedNeighbors.length})
+                {t("inspector.connections")} ({connectedNeighbors.length})
               </span>
               {isContact && contactNode && (
                 <button
@@ -250,14 +253,14 @@ export function NodeInspector({
                   className="flex items-center gap-1 text-[11px] text-zinc-400 hover:text-white transition-colors"
                 >
                   <Plus className="size-3" />
-                  Додати
+                  {t("graph.add")}
                 </button>
               )}
             </div>
 
             {connectedNeighbors.length === 0 ? (
               <div className="rounded-md border border-dashed border-zinc-800 p-2 text-center text-[11px] text-zinc-500">
-                Немає зареєстрованих зв&apos;язків
+                {t("inspector.noConnections")}
               </div>
             ) : (
               <div className="space-y-1 max-h-36 overflow-y-auto pr-0.5">
@@ -287,7 +290,7 @@ export function NodeInspector({
                         <div className="min-w-0">
                           <p className="font-medium text-zinc-200 truncate text-[11px]">{neighbor.name}</p>
                           <p className="text-[10px] text-zinc-500 truncate">
-                            {link.relationship || (isNeighborContact ? "Зв'язок" : "Організація")}
+                            {link.relationship || (isNeighborContact ? t("contact.defaultRelationship") : t("inspector.organization"))}
                           </p>
                         </div>
                       </div>
@@ -312,13 +315,13 @@ export function NodeInspector({
             <div className="space-y-1.5 pt-1.5 border-t border-white/[0.06]">
               <span className="flex items-center gap-1.5 text-[10px] font-medium text-zinc-400 uppercase tracking-wider">
                 <MessageSquare className="size-3 text-zinc-500" />
-                Новий запис
+                {t("inspector.newEntry")}
               </span>
               <div className="space-y-1.5">
                 <Textarea
                   value={quickNote}
                   onChange={(e) => setQuickNote(e.target.value)}
-                  placeholder="Додайте оновлення про контакт..."
+                  placeholder={t("inspector.notePlaceholder")}
                   className="min-h-12 resize-none bg-zinc-950/60 border-zinc-800 text-xs rounded-md"
                   disabled={isSubmittingNote}
                 />
@@ -333,7 +336,7 @@ export function NodeInspector({
                   ) : (
                     <ArrowRight className="size-3" />
                   )}
-                  {isSubmittingNote ? "Збереження..." : "Зберегти"}
+                  {isSubmittingNote ? t("inspector.saving") : t("inspector.save")}
                 </Button>
               </div>
             </div>
@@ -348,7 +351,7 @@ export function NodeInspector({
               className="flex items-center justify-center w-full rounded border border-white/[0.08] bg-zinc-800/80 hover:bg-zinc-800 text-zinc-200 text-xs h-7 gap-1.5 transition-colors"
             >
               <ExternalLink className="size-3 text-zinc-400" />
-              Повний профіль
+              {t("inspector.fullProfile")}
             </Link>
           </div>
         )}

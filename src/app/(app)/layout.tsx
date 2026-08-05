@@ -3,6 +3,7 @@ import { Network } from "lucide-react";
 
 import { auth } from "@/lib/auth";
 import { SignOutButton } from "@/components/sign-out-button";
+import { LanguageSwitcher } from "@/components/language-switcher";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const session = await auth();
@@ -27,6 +28,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
                 <span className="text-zinc-400 font-mono text-[11px]">{session.user.email}</span>
               </div>
             )}
+            <LanguageSwitcher />
             <SignOutButton />
           </div>
         </div>

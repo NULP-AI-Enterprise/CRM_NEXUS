@@ -5,6 +5,7 @@ import { Mic } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
+import { useTranslation } from "@/lib/i18n/context";
 
 // The Web Speech API (SpeechRecognition / webkitSpeechRecognition) has no
 // official TypeScript DOM lib typing yet, so this file works with `any`
@@ -32,6 +33,7 @@ export function VoiceInputButton({
     () => !!getSpeechRecognitionCtor(),
     () => false,
   );
+  const { t, locale } = useTranslation();
   const [isListening, setIsListening] = useState(false);
   const recognitionRef = useRef<any>(null);
 
@@ -50,12 +52,12 @@ export function VoiceInputButton({
 
     const SpeechRecognitionCtor = getSpeechRecognitionCtor();
     if (!SpeechRecognitionCtor) {
-      toast.error("Голосовий ввід не підтримується у цьому браузері.");
+      toast.error(t("voice.unsupported"));
       return;
     }
 
     const recognition = new SpeechRecognitionCtor();
-    recognition.lang = "uk-UA";
+    recognition.lang = locale === "uk" ? "uk-UA" : "en-US";
     recognition.continuous = true;
     recognition.interimResults = false;
 
@@ -73,7 +75,7 @@ export function VoiceInputButton({
 
     recognition.onerror = (event: any) => {
       if (event.error !== "no-speech") {
-        toast.error("Помилка розпізнавання мовлення.");
+        toast.error(t("voice.recognitionError"));
       }
       setIsListening(false);
     };
@@ -98,7 +100,7 @@ export function VoiceInputButton({
       size="icon"
       disabled={disabled}
       onClick={toggleListening}
-      title={isListening ? "Зупинити запис" : "Голосовий ввід"}
+      title={isListening ? t("voice.stop") : t("voice.start")}
       aria-pressed={isListening}
     >
       <Mic className={isListening ? "animate-pulse" : undefined} />

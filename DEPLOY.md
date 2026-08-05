@@ -922,10 +922,11 @@ postgresql://personal_crm:<pass>@personal-crm-postgres.personal-crm.svc.cluster.
 | `POSTGRES_USER`, `POSTGRES_PASSWORD` | споживаються Postgres StatefulSet і initContainer `wait-for-db` |
 | `OPENAI_API_KEY` | ключ для `gpt-4o-mini` (Structured Outputs) — https://platform.openai.com/api-keys |
 | `AUTH_SECRET` | ключ шифрування Auth.js JWT-сесії, `openssl rand -base64 32`; ротація = вихід усіх користувачів із сесії |
+| `SMTP_HOST`, `SMTP_PORT`, `SMTP_USERNAME`, `SMTP_PASSWORD` | SMTP для листів підтвердження email. Для Gmail — App Password (https://myaccount.google.com/apppasswords), не пароль акаунту |
 
-`AUTH_URL` і `AUTH_TRUST_HOST` — несекретні, прописані прямо в
+`AUTH_URL`, `AUTH_TRUST_HOST` і `APP_URL` — несекретні, прописані прямо в
 `deployment.yaml` (Auth.js за Traefik-проксі потребує `trustHost`, інакше
-кидає `UntrustedHost` у проді).
+кидає `UntrustedHost` у проді; `APP_URL` — база для лінка підтвердження email).
 
 ```bash
 cp k8s/secret.example.yaml k8s/secret.yaml    # k8s/secret.yaml у .gitignore
@@ -984,6 +985,23 @@ initContainers** у `deployment.yaml`, не окремий Job.
 одночасно проти однієї БД. Порожня БД піднімається з нуля автоматично при
 першому деплої.
 
+### Виправлено: дублювання `ContactConnection` у міграціях
+
+Знайдено перед додаванням email-верифікації — щоб не повернулось.
+`ContactConnection` в якийсь момент потрапила в БД повз `prisma migrate`
+(ймовірно через `db push`), і `prisma/migrations/20260804084838_init/migration.sql`
+згодом вручну відредагували, щоб включити її туди задля усунення drift.
+Паралельно був створений **окремий** файл миграції, який теж створював
+`ContactConnection` — тобто `migrate deploy` на чистій базі падав би на
+кроці другої миграції з `relation "ContactConnection" already exists`.
+
+Виправлення: `ContactConnection` лишається лише в `init`; нова миграція
+`20260805110000_add_email_verification` містить **тільки**
+`EmailVerificationToken` та `User.emailVerified`. Якщо знову з'явиться
+drift-помилка від `prisma migrate dev` — не створювати нову миграцію,
+що дублює вже наявні таблиці; спочатку перевірити
+`grep -c ContactConnection prisma/migrations/*/migration.sql`.
+
 ---
 
 ## 5. AI-обробка нотаток (`gpt-4o-mini`)
@@ -998,6 +1016,25 @@ OpenAI API. Це навмисно (нотатка обробляється за 
   повідомленням "Не вдалося обробити нотатку", под лишається healthy
   (health-check перевіряє лише Postgres, не OpenAI — так само, як
   `butiktoys-pos` свідомо не перевіряє MinIO в §7 загальної частини).
+
+## 5a. Підтвердження email (сувора перевірка)
+
+Реєстрація **не** логінить користувача одразу. Замість цього:
+
+1. Створюється `User` з `emailVerified = null`.
+2. Генерується токен у таблиці `EmailVerificationToken` (TTL 24 год) і
+   надсилається лист через SMTP з лінком `${APP_URL}/verify-email?token=...`.
+3. Вхід (`authorize()` в `src/lib/auth.ts`) відмовляє, якщо
+   `emailVerified` — `null`, навіть з правильним паролем. UI показує
+   повідомлення й кнопку "Надіслати лист повторно".
+
+Якщо SMTP недоступний під час реєстрації (таймаут, невірні креденшли) —
+акаунт **все одно створюється**; користувач просто натискає "надіслати
+повторно" пізніше. Реєстрація ніколи не блокується через SMTP.
+
+Health-check не перевіряє SMTP (так само, як не перевіряє OpenAI) — і Gmail,
+і OpenAI — зовнішні залежності, недоступність яких не повинна знімати под з
+трафіку.
 
 ## 6. Health check
 
@@ -1055,6 +1092,7 @@ curl -sS https://personal-crm.thesis-i.com/api/health
 - [ ] Пароль у `DATABASE_URL` збігається з `POSTGRES_PASSWORD`
 - [ ] `OPENAI_API_KEY` дійсний і має квоту на `gpt-4o-mini`
 - [ ] `AUTH_SECRET` ≥ 32 символи, згенерований випадково (`openssl rand -base64 32`)
+- [ ] `SMTP_USERNAME`/`SMTP_PASSWORD` — Gmail App Password, не пароль акаунту
 - [ ] `k8s/secret.yaml` не закомічений, `k8s/sealed-secret.yaml` — закомічений
 - [ ] Обидва теги образів (`personal-crm` і `-migrator`) вказують на один SHA
 - [ ] StorageClass кластера підтримує `ReadWriteOnce` для PVC Postgres
@@ -1086,3 +1124,6 @@ kubectl exec -n personal-crm personal-crm-postgres-0 -- \
 | Після логіну одразу редіректить на `/login` | `AUTH_SECRET` змінився або `AUTH_TRUST_HOST` не `"true"` за проксі | перевірити Secret і env у `deployment.yaml` |
 | Голосовий ввід не працює | браузер без підтримки Web Speech API (не Chromium) | очікувана поведінка — кнопка мікрофону просто не рендериться |
 | `Постійний OutOfSync` на StatefulSet | дефолти `volumeClaimTemplates` | `ignoreDifferences` уже є в `argocd-app.yaml` |
+| Лист підтвердження не приходить | невірний `SMTP_PASSWORD` (потрібен Gmail App Password), або лист у спамі | `kubectl logs ... -c personal-crm \| grep -i "verification email"`; перевірити https://myaccount.google.com/apppasswords |
+| Вхід відмовляє з "підтвердіть email" після кліку на лінк | токен застарів (TTL 24 год) або вже використаний | натиснути "надіслати повторно" на сторінці входу |
+| `Init:Error` при повторному застосуванні миграцій, `relation already exists` | дубльована миграція створює таблицю, що вже є в `init` | див. підрозділ "Виправлено" в §4 — `grep -c <Table> prisma/migrations/*/migration.sql` |
