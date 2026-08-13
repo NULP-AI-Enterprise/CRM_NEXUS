@@ -48,13 +48,13 @@ export function QuickAddCard() {
   };
 
   return (
-    <div className="relative overflow-hidden rounded-xl border border-white/[0.08] bg-zinc-900/40 p-4 transition-colors">
+    <div className="relative overflow-hidden rounded-xl border border-border bg-card p-4 transition-colors">
       <div className="flex items-center justify-between pb-2">
         <div>
-          <h2 className="text-xs font-semibold text-white tracking-tight uppercase tracking-wider text-zinc-400">
+          <h2 className="text-xs font-semibold text-foreground tracking-tight uppercase tracking-wider text-muted-foreground">
             {t("quickAdd.title")}
           </h2>
-          <p className="text-xs text-zinc-400 mt-0.5">{t("quickAdd.description")}</p>
+          <p className="text-xs text-muted-foreground mt-0.5">{t("quickAdd.description")}</p>
         </div>
       </div>
 
@@ -64,7 +64,7 @@ export function QuickAddCard() {
             value={text}
             onChange={(e) => setText(e.target.value)}
             placeholder={t("quickAdd.placeholder")}
-            className="min-h-18 flex-1 resize-none rounded-lg border-white/[0.08] bg-zinc-950/60 p-3 text-base md:text-xs text-zinc-100 placeholder:text-zinc-500 focus:border-zinc-500 focus:ring-0"
+            className="min-h-18 flex-1 resize-none rounded-lg border-border bg-muted p-3 text-base md:text-xs text-foreground placeholder:text-muted-foreground focus:border-accent"
             disabled={isPending}
           />
           <div className="flex flex-col justify-start">
@@ -73,12 +73,12 @@ export function QuickAddCard() {
         </div>
 
         <div className="flex items-center justify-between pt-0.5">
-          <span className="text-[11px] text-zinc-500">{t("quickAdd.audioTextSupport")}</span>
+          <span className="text-[11px] text-muted-foreground">{t("quickAdd.audioTextSupport")}</span>
 
           <Button
             onClick={handleSubmit}
             disabled={isPending || !text.trim()}
-            className="bg-white hover:bg-zinc-200 text-zinc-950 rounded-md px-3.5 h-7 text-xs font-medium gap-1.5 transition-colors"
+            className="bg-primary hover:bg-primary/90 text-primary-foreground rounded-md px-3.5 h-7 text-xs font-medium gap-1.5 transition-colors"
           >
             {isPending ? <Loader2 className="size-3 animate-spin" /> : <ArrowRight className="size-3" />}
             {isPending ? t("quickAdd.submitPending") : t("quickAdd.submit")}

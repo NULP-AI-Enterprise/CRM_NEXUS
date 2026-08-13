@@ -105,22 +105,22 @@ export function NodeInspector({
 
   return (
     <>
-      <div className="absolute top-3 right-3 z-30 w-84 max-w-[calc(100vw-2rem)] max-h-[calc(100%-1.5rem)] flex flex-col rounded-xl border border-white/[0.08] bg-zinc-900/98 text-zinc-100 shadow-2xl backdrop-blur-xl transition-all duration-150 overflow-hidden">
+      <div className="absolute top-3 right-3 z-30 w-84 max-w-[calc(100vw-2rem)] max-h-[calc(100%-1.5rem)] flex flex-col rounded-xl border border-border bg-card text-foreground shadow-2xl backdrop-blur-xl transition-all duration-150 overflow-hidden">
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-white/[0.06] px-3.5 py-2.5 bg-zinc-900">
+        <div className="flex items-center justify-between border-b border-border px-3.5 py-2.5 bg-card">
           <div className="flex items-center gap-2">
             {isContact ? (
-              <span className="size-1.5 rounded-full bg-zinc-400" />
+              <span className="size-1.5 rounded-full bg-muted-foreground" />
             ) : (
-              <Building2 className="size-3 text-zinc-400" />
+              <Building2 className="size-3 text-muted-foreground" />
             )}
-            <span className="text-[11px] font-medium tracking-wide uppercase text-zinc-400">
+            <span className="text-[11px] font-medium tracking-wide uppercase text-muted-foreground">
               {isContact ? t("inspector.contact") : t("inspector.company")}
             </span>
           </div>
           <button
             onClick={onClose}
-            className="rounded p-0.5 text-zinc-400 transition-colors hover:bg-white/10 hover:text-white"
+            className="rounded p-0.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
           >
             <X className="size-3.5" />
           </button>
@@ -132,22 +132,22 @@ export function NodeInspector({
           {isContact && contactNode && (
             <div>
               <div className="flex items-start gap-2.5">
-                <Avatar className="size-9 border border-white/[0.08] shrink-0 bg-zinc-800">
-                  <AvatarFallback className="font-medium text-xs bg-zinc-800 text-zinc-300">
+                <Avatar className="size-9 border border-border shrink-0 bg-secondary">
+                  <AvatarFallback className="font-medium text-xs bg-secondary text-secondary-foreground">
                     {initials(contactNode.name)}
                   </AvatarFallback>
                 </Avatar>
 
                 <div className="flex-1 min-w-0">
-                  <h3 className="text-xs font-semibold text-white truncate tracking-tight">
+                  <h3 className="text-xs font-semibold text-foreground truncate tracking-tight">
                     {contactNode.name}
                   </h3>
                   {contactNode.role && (
-                    <p className="text-[11px] text-zinc-400 truncate">{contactNode.role}</p>
+                    <p className="text-[11px] text-muted-foreground truncate">{contactNode.role}</p>
                   )}
                   {contactNode.companyName && (
-                    <div className="mt-0.5 flex items-center gap-1 text-[11px] text-zinc-300 truncate">
-                      <Building2 className="size-2.5 shrink-0 text-zinc-500" />
+                    <div className="mt-0.5 flex items-center gap-1 text-[11px] text-muted-foreground truncate">
+                      <Building2 className="size-2.5 shrink-0 text-muted-foreground" />
                       <span className="truncate">{contactNode.companyName}</span>
                     </div>
                   )}
@@ -156,7 +156,7 @@ export function NodeInspector({
 
               {/* Badges Row */}
               <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
-                <span className="inline-flex items-center gap-1.5 rounded-md border border-white/[0.06] bg-zinc-950 px-2 py-0.5 text-[10px] text-zinc-300">
+                <span className="inline-flex items-center gap-1.5 rounded-md border border-border bg-muted px-2 py-0.5 text-[10px] text-muted-foreground">
                   <span
                     className="size-1.5 rounded-full"
                     style={{ backgroundColor: CATEGORY_COLORS[contactNode.category].dot }}
@@ -165,12 +165,12 @@ export function NodeInspector({
                 </span>
 
                 {contactNode.usefulnessScore != null && (
-                  <span className="inline-flex items-center gap-1 rounded-md border border-white/[0.06] bg-zinc-950 px-2 py-0.5 text-[10px] font-mono text-zinc-300">
+                  <span className="inline-flex items-center gap-1 rounded-md border border-border bg-muted px-2 py-0.5 text-[10px] font-mono text-muted-foreground">
                     ★ {contactNode.usefulnessScore}/10
                   </span>
                 )}
 
-                <span className="inline-flex items-center gap-1 rounded-md border border-white/[0.06] bg-zinc-950 px-2 py-0.5 text-[10px] text-zinc-400">
+                <span className="inline-flex items-center gap-1 rounded-md border border-border bg-muted px-2 py-0.5 text-[10px] text-muted-foreground">
                   {`${connectedNeighbors.length} ${t("inspector.connectionsCount")}`}
                 </span>
               </div>
@@ -180,23 +180,23 @@ export function NodeInspector({
           {!isContact && companyNode && (
             <div>
               <div className="flex items-start gap-2.5">
-                <div className="flex size-9 items-center justify-center rounded-lg bg-zinc-800 border border-white/[0.06] text-zinc-300 shrink-0">
+                <div className="flex size-9 items-center justify-center rounded-lg bg-secondary border border-border text-secondary-foreground shrink-0">
                   <Building2 className="size-4" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <h3 className="text-xs font-semibold text-white truncate tracking-tight">
+                  <h3 className="text-xs font-semibold text-foreground truncate tracking-tight">
                     {companyNode.name}
                   </h3>
                   {companyNode.industry && (
-                    <p className="text-[11px] text-zinc-400">{companyNode.industry}</p>
+                    <p className="text-[11px] text-muted-foreground">{companyNode.industry}</p>
                   )}
-                  <p className="text-[10px] text-zinc-500 mt-0.5 font-mono">
+                  <p className="text-[10px] text-muted-foreground mt-0.5 font-mono">
                     {`${companyNode.contactCount} ${t("graph.contactsUnit")}`}
                   </p>
                 </div>
               </div>
               {companyNode.description && (
-                <p className="mt-2.5 text-xs text-zinc-400 leading-relaxed bg-zinc-950/60 p-2.5 rounded-lg border border-white/[0.06]">
+                <p className="mt-2.5 text-xs text-muted-foreground leading-relaxed bg-muted p-2.5 rounded-lg border border-border">
                   {companyNode.description}
                 </p>
               )}
@@ -205,35 +205,35 @@ export function NodeInspector({
 
           {/* Context & Notes */}
           {isContact && contactNode && (
-            <div className="space-y-1.5 rounded-lg border border-white/[0.06] bg-zinc-950/50 p-2.5 text-xs">
-              <div className="flex items-center gap-1.5 text-[10px] font-medium text-zinc-400 uppercase tracking-wider">
-                <Compass className="size-3 text-zinc-500" />
+            <div className="space-y-1.5 rounded-lg border border-border bg-muted p-2.5 text-xs">
+              <div className="flex items-center gap-1.5 text-[10px] font-medium text-muted-foreground uppercase tracking-wider">
+                <Compass className="size-3 text-muted-foreground" />
                 {t("inspector.context")}
               </div>
 
               {contactNode.temperament && (
                 <div className="text-[11px]">
-                  <span className="text-zinc-500">{t("inspector.style")} </span>
-                  <span className="text-zinc-300">{contactNode.temperament}</span>
+                  <span className="text-muted-foreground">{t("inspector.style")} </span>
+                  <span className="text-foreground">{contactNode.temperament}</span>
                 </div>
               )}
 
               {contactNode.needs && (
                 <div className="text-[11px]">
-                  <span className="text-zinc-500">{t("inspector.needs")} </span>
-                  <span className="text-zinc-300">{contactNode.needs}</span>
+                  <span className="text-muted-foreground">{t("inspector.needs")} </span>
+                  <span className="text-foreground">{contactNode.needs}</span>
                 </div>
               )}
 
               {contactNode.valuePotential && (
                 <div className="text-[11px]">
-                  <span className="text-zinc-500">{t("inspector.potential")} </span>
-                  <span className="text-zinc-300">{contactNode.valuePotential}</span>
+                  <span className="text-muted-foreground">{t("inspector.potential")} </span>
+                  <span className="text-foreground">{contactNode.valuePotential}</span>
                 </div>
               )}
 
               {contactNode.fullSummary && (
-                <div className="pt-1.5 border-t border-white/[0.04] text-[11px] text-zinc-400 leading-relaxed">
+                <div className="pt-1.5 border-t border-border text-[11px] text-muted-foreground leading-relaxed">
                   <p className="line-clamp-3">{contactNode.fullSummary}</p>
                 </div>
               )}
@@ -243,14 +243,14 @@ export function NodeInspector({
           {/* Connected Network Links */}
           <div className="space-y-1.5">
             <div className="flex items-center justify-between">
-              <span className="flex items-center gap-1.5 text-[10px] font-medium text-zinc-400 uppercase tracking-wider">
-                <Users className="size-3 text-zinc-500" />
+              <span className="flex items-center gap-1.5 text-[10px] font-medium text-muted-foreground uppercase tracking-wider">
+                <Users className="size-3 text-muted-foreground" />
                 {t("inspector.connections")} ({connectedNeighbors.length})
               </span>
               {isContact && contactNode && (
                 <button
                   onClick={() => setIsConnectDialogOpen(true)}
-                  className="flex items-center gap-1 text-[11px] text-zinc-400 hover:text-white transition-colors"
+                  className="flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground transition-colors"
                 >
                   <Plus className="size-3" />
                   {t("graph.add")}
@@ -259,7 +259,7 @@ export function NodeInspector({
             </div>
 
             {connectedNeighbors.length === 0 ? (
-              <div className="rounded-md border border-dashed border-zinc-800 p-2 text-center text-[11px] text-zinc-500">
+              <div className="rounded-md border border-dashed border-border p-2 text-center text-[11px] text-muted-foreground">
                 {t("inspector.noConnections")}
               </div>
             ) : (
@@ -272,24 +272,24 @@ export function NodeInspector({
                   return (
                     <div
                       key={link.id}
-                      className="flex items-center justify-between rounded-md border border-white/[0.04] bg-zinc-950/40 p-1.5 text-xs hover:bg-zinc-800/40 transition-colors"
+                      className="flex items-center justify-between rounded-md border border-border bg-muted p-1.5 text-xs hover:bg-muted transition-colors"
                     >
                       <div className="flex items-center gap-2 min-w-0">
                         {isNeighborContact && neighborContact ? (
-                          <Avatar className="size-5 shrink-0 bg-zinc-800">
-                            <AvatarFallback className="text-[9px] bg-zinc-800 text-zinc-300">
+                          <Avatar className="size-5 shrink-0 bg-secondary">
+                            <AvatarFallback className="text-[9px] bg-secondary text-secondary-foreground">
                               {initials(neighborContact.name)}
                             </AvatarFallback>
                           </Avatar>
                         ) : (
-                          <div className="flex size-5 shrink-0 items-center justify-center rounded bg-zinc-800 text-zinc-400">
+                          <div className="flex size-5 shrink-0 items-center justify-center rounded bg-secondary text-secondary-foreground">
                             <Building2 className="size-2.5" />
                           </div>
                         )}
 
                         <div className="min-w-0">
-                          <p className="font-medium text-zinc-200 truncate text-[11px]">{neighbor.name}</p>
-                          <p className="text-[10px] text-zinc-500 truncate">
+                          <p className="font-medium text-foreground truncate text-[11px]">{neighbor.name}</p>
+                          <p className="text-[10px] text-muted-foreground truncate">
                             {link.relationship || (isNeighborContact ? t("contact.defaultRelationship") : t("inspector.organization"))}
                           </p>
                         </div>
@@ -298,7 +298,7 @@ export function NodeInspector({
                       {isNeighborContact && (
                         <Link
                           href={`/contacts/${neighbor.id}`}
-                          className="text-zinc-500 hover:text-zinc-200 p-0.5"
+                          className="text-muted-foreground hover:text-foreground p-0.5"
                         >
                           <ExternalLink className="size-3" />
                         </Link>
@@ -312,9 +312,9 @@ export function NodeInspector({
 
           {/* Quick Note */}
           {isContact && contactNode && (
-            <div className="space-y-1.5 pt-1.5 border-t border-white/[0.06]">
-              <span className="flex items-center gap-1.5 text-[10px] font-medium text-zinc-400 uppercase tracking-wider">
-                <MessageSquare className="size-3 text-zinc-500" />
+            <div className="space-y-1.5 pt-1.5 border-t border-border">
+              <span className="flex items-center gap-1.5 text-[10px] font-medium text-muted-foreground uppercase tracking-wider">
+                <MessageSquare className="size-3 text-muted-foreground" />
                 {t("inspector.newEntry")}
               </span>
               <div className="space-y-1.5">
@@ -322,14 +322,14 @@ export function NodeInspector({
                   value={quickNote}
                   onChange={(e) => setQuickNote(e.target.value)}
                   placeholder={t("inspector.notePlaceholder")}
-                  className="min-h-12 resize-none bg-zinc-950/60 border-zinc-800 text-base md:text-xs rounded-md"
+                  className="min-h-12 resize-none bg-muted border-border text-base md:text-xs rounded-md"
                   disabled={isSubmittingNote}
                 />
                 <Button
                   size="sm"
                   onClick={handleAddNote}
                   disabled={isSubmittingNote || !quickNote.trim()}
-                  className="w-full bg-zinc-100 hover:bg-white text-zinc-950 h-6.5 text-xs font-medium gap-1"
+                  className="w-full bg-primary hover:bg-primary/90 text-primary-foreground h-6.5 text-xs font-medium gap-1"
                 >
                   {isSubmittingNote ? (
                     <Loader2 className="size-3 animate-spin" />
@@ -345,12 +345,12 @@ export function NodeInspector({
 
         {/* Footer Actions */}
         {isContact && contactNode && (
-          <div className="border-t border-white/[0.06] bg-zinc-900 p-2">
+          <div className="border-t border-border bg-card p-2">
             <Link
               href={`/contacts/${contactNode.id}`}
-              className="flex items-center justify-center w-full rounded border border-white/[0.08] bg-zinc-800/80 hover:bg-zinc-800 text-zinc-200 text-xs h-7 gap-1.5 transition-colors"
+              className="flex items-center justify-center w-full rounded border border-border bg-secondary hover:bg-muted text-foreground text-xs h-7 gap-1.5 transition-colors"
             >
-              <ExternalLink className="size-3 text-zinc-400" />
+              <ExternalLink className="size-3 text-muted-foreground" />
               {t("inspector.fullProfile")}
             </Link>
           </div>

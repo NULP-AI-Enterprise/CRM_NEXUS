@@ -194,7 +194,7 @@ export function MiniNetworkGraph({
           ctx.beginPath();
           ctx.moveTo(center.x, center.y);
           ctx.lineTo(peer.x, peer.y);
-          ctx.strokeStyle = "rgba(255, 255, 255, 0.15)";
+          ctx.strokeStyle = "rgba(36, 29, 21, 0.2)";
           ctx.lineWidth = 1.2;
           ctx.stroke();
 
@@ -204,14 +204,14 @@ export function MiniNetworkGraph({
             const midY = (center.y + peer.y) / 2;
             ctx.font = "400 9.5px var(--font-sans), Inter, sans-serif";
             const tw = ctx.measureText(peer.relationship).width;
-            ctx.fillStyle = "#121215";
+            ctx.fillStyle = "#241D15";
             ctx.strokeStyle = "rgba(255, 255, 255, 0.1)";
             ctx.lineWidth = 1;
             ctx.beginPath();
             ctx.roundRect(midX - tw / 2 - 4, midY - 6, tw + 8, 12, 3);
             ctx.fill();
             ctx.stroke();
-            ctx.fillStyle = "#A1A1AA";
+            ctx.fillStyle = "#B5A896";
             ctx.textAlign = "center";
             ctx.textBaseline = "middle";
             ctx.fillText(peer.relationship, midX, midY);
@@ -226,17 +226,17 @@ export function MiniNetworkGraph({
         const colors =
           node.category !== "COMPANY"
             ? CATEGORY_COLORS[node.category] || CATEGORY_COLORS.OTHER
-            : { dot: "#A1A1AA" };
+            : { dot: "#8A8175" };
 
         ctx.save();
 
         // Circle
         ctx.beginPath();
         ctx.arc(node.x, node.y, node.radius, 0, Math.PI * 2);
-        ctx.fillStyle = node.isCenter ? "#FFFFFF" : isHovered ? "#222226" : "#141417";
+        ctx.fillStyle = node.isCenter ? "#241D15" : isHovered ? "#F1EAE0" : "#FFFFFF";
         ctx.fill();
 
-        ctx.strokeStyle = node.isCenter ? "#FFFFFF" : isHovered ? "rgba(255, 255, 255, 0.3)" : "rgba(255, 255, 255, 0.12)";
+        ctx.strokeStyle = node.isCenter ? "#B8583E" : isHovered ? "rgba(36, 29, 21, 0.35)" : "rgba(36, 29, 21, 0.18)";
         ctx.lineWidth = node.isCenter ? 2 : 1.2;
         ctx.stroke();
 
@@ -246,13 +246,13 @@ export function MiniNetworkGraph({
           ctx.arc(node.x + node.radius * 0.65, node.y - node.radius * 0.65, 3, 0, Math.PI * 2);
           ctx.fillStyle = colors.dot;
           ctx.fill();
-          ctx.strokeStyle = "#141417";
+          ctx.strokeStyle = "#FFFFFF";
           ctx.lineWidth = 1;
           ctx.stroke();
         }
 
         // Initials
-        ctx.fillStyle = node.isCenter ? "#09090B" : "#E4E4E7";
+        ctx.fillStyle = node.isCenter ? "#F1EAE0" : "#241D15";
         ctx.font = node.isCenter ? "500 11px var(--font-sans), Inter, sans-serif" : "500 9px var(--font-sans), Inter, sans-serif";
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
@@ -260,7 +260,7 @@ export function MiniNetworkGraph({
 
         // Label below
         ctx.font = "400 10.5px var(--font-sans), Inter, sans-serif";
-        ctx.fillStyle = node.isCenter ? "#FFFFFF" : "#A1A1AA";
+        ctx.fillStyle = node.isCenter ? "#241D15" : "#7A6F5F";
         ctx.fillText(
           node.name.length > 15 ? `${node.name.slice(0, 13)}...` : node.name,
           node.x,
@@ -321,22 +321,22 @@ export function MiniNetworkGraph({
   return (
     <div
       ref={containerRef}
-      className="relative overflow-hidden rounded-xl border border-white/[0.08] bg-zinc-900/30 p-4 transition-colors"
+      className="relative overflow-hidden rounded-xl border border-border bg-card p-4 transition-colors"
     >
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-2">
-          <Share2 className="size-3.5 text-zinc-400" />
-          <h3 className="text-xs font-semibold text-white uppercase tracking-wider">
+          <Share2 className="size-3.5 text-muted-foreground" />
+          <h3 className="text-xs font-semibold text-foreground uppercase tracking-wider">
             {t("graph.localGraph")}
           </h3>
-          <span className="rounded-md border border-white/[0.06] bg-zinc-900 px-1.5 py-0.5 text-[10px] text-zinc-400 font-mono">
+          <span className="rounded-md border border-border bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground font-mono">
             {allPeers.length}
           </span>
         </div>
         <Button
           size="sm"
           onClick={() => setIsConnectOpen(true)}
-          className="h-6.5 text-xs bg-zinc-800 hover:bg-zinc-700 text-zinc-200 gap-1 rounded-md"
+          className="h-6.5 text-xs bg-secondary hover:bg-secondary/70 text-secondary-foreground gap-1 rounded-md"
         >
           <Plus className="size-3" />
           {t("graph.add")}
@@ -344,13 +344,13 @@ export function MiniNetworkGraph({
       </div>
 
       {allPeers.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-8 text-center text-xs text-zinc-500">
+        <div className="flex flex-col items-center justify-center py-8 text-center text-xs text-muted-foreground">
           <p>{t("graph.noDirectConnections")}</p>
           <Button
             size="sm"
             variant="outline"
             onClick={() => setIsConnectOpen(true)}
-            className="mt-2.5 border-zinc-800 bg-zinc-900 text-xs text-zinc-300 gap-1.5"
+            className="mt-2.5 border-border bg-card text-xs text-muted-foreground gap-1.5"
           >
             <Plus className="size-3" />
             {t("graph.connect")}
@@ -362,7 +362,7 @@ export function MiniNetworkGraph({
           onClick={handleCanvasClick}
           onMouseMove={handleCanvasMouseMove}
           onMouseLeave={() => setHoveredNode(null)}
-          className="block w-full h-[300px] cursor-pointer rounded-lg bg-zinc-950/60 border border-white/[0.04]"
+          className="block w-full h-[300px] cursor-pointer rounded-lg bg-muted border border-border"
         />
       )}
 

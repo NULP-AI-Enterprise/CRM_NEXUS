@@ -329,7 +329,7 @@ export function NetworkGraph({ initialData }: NetworkGraphProps) {
     const mapX = (x: number) => (x - minX + pad) * scale;
     const mapY = (y: number) => (y - minY + pad) * scale;
 
-    miniCtx.strokeStyle = "rgba(255, 255, 255, 0.05)";
+    miniCtx.strokeStyle = "rgba(36, 29, 21, 0.12)";
     miniCtx.lineWidth = 0.8;
     for (const l of simLinksRef.current) {
       if (!l.sourceNode || !l.targetNode) continue;
@@ -344,8 +344,8 @@ export function NetworkGraph({ initialData }: NetworkGraphProps) {
       miniCtx.arc(mapX(n.x), mapY(n.y), n.nodeType === "company" ? 2 : 1.5, 0, Math.PI * 2);
       miniCtx.fillStyle =
         n.nodeType === "company"
-          ? "#71717A"
-          : CATEGORY_COLORS[n.category]?.dot || "#A1A1AA";
+          ? "#8A8175"
+          : CATEGORY_COLORS[n.category]?.dot || "#8A8175";
       miniCtx.fill();
     }
 
@@ -359,7 +359,7 @@ export function NetworkGraph({ initialData }: NetworkGraphProps) {
       const vpRight = (w - camX) / zoom;
       const vpBottom = (h - camY) / zoom;
 
-      miniCtx.strokeStyle = "rgba(255, 255, 255, 0.4)";
+      miniCtx.strokeStyle = "rgba(36, 29, 21, 0.45)";
       miniCtx.lineWidth = 1;
       miniCtx.strokeRect(
         mapX(vpLeft),
@@ -554,20 +554,20 @@ export function NetworkGraph({ initialData }: NetworkGraphProps) {
         ctx.lineTo(b.x, b.y);
 
         if (isLinkActive) {
-          ctx.strokeStyle = "rgba(255, 255, 255, 0.75)";
+          ctx.strokeStyle = "rgba(184, 88, 62, 0.85)";
           ctx.lineWidth = 1.8;
         } else if (isDimmed) {
-          ctx.strokeStyle = "rgba(255, 255, 255, 0.02)";
+          ctx.strokeStyle = "rgba(36, 29, 21, 0.04)";
           ctx.lineWidth = 1;
         } else {
           if (link.type === "company_hub") {
-            ctx.strokeStyle = "rgba(255, 255, 255, 0.12)";
+            ctx.strokeStyle = "rgba(36, 29, 21, 0.16)";
             ctx.lineWidth = 1.2;
           } else if (link.type === "direct") {
-            ctx.strokeStyle = "rgba(255, 255, 255, 0.16)";
+            ctx.strokeStyle = "rgba(36, 29, 21, 0.22)";
             ctx.lineWidth = 1.2 + (link.strength || 1) * 0.2;
           } else {
-            ctx.strokeStyle = "rgba(255, 255, 255, 0.06)";
+            ctx.strokeStyle = "rgba(36, 29, 21, 0.1)";
             ctx.lineWidth = 1;
             ctx.setLineDash([3, 3]);
           }
@@ -585,7 +585,7 @@ export function NetworkGraph({ initialData }: NetworkGraphProps) {
           ctx.save();
           ctx.beginPath();
           ctx.arc(px, py, isLinkActive ? 2 : 1.2, 0, Math.PI * 2);
-          ctx.fillStyle = isLinkActive ? "#FFFFFF" : "rgba(255, 255, 255, 0.25)";
+          ctx.fillStyle = isLinkActive ? "#B8583E" : "rgba(36, 29, 21, 0.3)";
           ctx.fill();
           ctx.restore();
         }
@@ -601,7 +601,7 @@ export function NetworkGraph({ initialData }: NetworkGraphProps) {
           const padX = 6;
           const padY = 3;
 
-          ctx.fillStyle = "#121215";
+          ctx.fillStyle = "#241D15";
           ctx.strokeStyle = "rgba(255, 255, 255, 0.15)";
           ctx.lineWidth = 1;
           ctx.beginPath();
@@ -615,7 +615,7 @@ export function NetworkGraph({ initialData }: NetworkGraphProps) {
           ctx.fill();
           ctx.stroke();
 
-          ctx.fillStyle = "#E4E4E7";
+          ctx.fillStyle = "#F1EAE0";
           ctx.textAlign = "center";
           ctx.textBaseline = "middle";
           ctx.fillText(link.relationship, midX, midY);
@@ -639,23 +639,23 @@ export function NetworkGraph({ initialData }: NetworkGraphProps) {
           ctx.beginPath();
           ctx.arc(node.x, node.y, r, 0, Math.PI * 2);
           ctx.fillStyle = isSelected
-            ? "#27272A"
+            ? "#D9CDBB"
             : isHovered
-            ? "#1E1E22"
-            : "#141417";
+            ? "#E4D9C8"
+            : "#EDE4D6";
           ctx.fill();
 
           ctx.strokeStyle = isSelected
-            ? "#FFFFFF"
+            ? "#241D15"
             : isHovered
-            ? "rgba(255, 255, 255, 0.3)"
-            : "rgba(255, 255, 255, 0.14)";
+            ? "rgba(36, 29, 21, 0.45)"
+            : "rgba(36, 29, 21, 0.22)";
           ctx.lineWidth = isSelected ? 2 : 1.2;
           ctx.stroke();
 
           // Vector Building Glyph
           ctx.save();
-          ctx.strokeStyle = isSelected ? "#FFFFFF" : "#A1A1AA";
+          ctx.strokeStyle = isSelected ? "#241D15" : "#7A6F5F";
           ctx.lineWidth = 1.2;
           ctx.strokeRect(node.x - 6, node.y - 6, 12, 12);
           ctx.beginPath();
@@ -669,12 +669,12 @@ export function NetworkGraph({ initialData }: NetworkGraphProps) {
           // Count Badge
           ctx.beginPath();
           ctx.arc(node.x + r * 0.7, node.y - r * 0.7, 7, 0, Math.PI * 2);
-          ctx.fillStyle = "#27272A";
+          ctx.fillStyle = "#B8583E";
           ctx.fill();
-          ctx.strokeStyle = "rgba(255, 255, 255, 0.12)";
+          ctx.strokeStyle = "rgba(255, 255, 255, 0.5)";
           ctx.lineWidth = 1;
           ctx.stroke();
-          ctx.fillStyle = "#E4E4E7";
+          ctx.fillStyle = "#FFFFFF";
           ctx.font = "500 8.5px var(--font-sans), Inter, sans-serif";
           ctx.textAlign = "center";
           ctx.textBaseline = "middle";
@@ -686,15 +686,15 @@ export function NetworkGraph({ initialData }: NetworkGraphProps) {
             const textWidth = ctx.measureText(node.name).width;
             const padX = 5;
 
-            ctx.fillStyle = "#121215";
-            ctx.strokeStyle = "rgba(255, 255, 255, 0.08)";
+            ctx.fillStyle = "#241D15";
+            ctx.strokeStyle = "rgba(255, 255, 255, 0.1)";
             ctx.lineWidth = 1;
             ctx.beginPath();
             ctx.roundRect(node.x - textWidth / 2 - padX, node.y + r + 4, textWidth + padX * 2, 16, 4);
             ctx.fill();
             ctx.stroke();
 
-            ctx.fillStyle = "#FAFAFA";
+            ctx.fillStyle = "#F1EAE0";
             ctx.textAlign = "center";
             ctx.textBaseline = "middle";
             ctx.fillText(node.name, node.x, node.y + r + 12);
@@ -706,17 +706,17 @@ export function NetworkGraph({ initialData }: NetworkGraphProps) {
           ctx.beginPath();
           ctx.arc(node.x, node.y, r, 0, Math.PI * 2);
           ctx.fillStyle = isSelected
-            ? "#FFFFFF"
+            ? "#241D15"
             : isHovered
-            ? "#222226"
-            : "#141417";
+            ? "#F1EAE0"
+            : "#FFFFFF";
           ctx.fill();
 
           ctx.strokeStyle = isSelected
-            ? "#FFFFFF"
+            ? "#B8583E"
             : isHovered
-            ? "rgba(255, 255, 255, 0.3)"
-            : "rgba(255, 255, 255, 0.12)";
+            ? "rgba(36, 29, 21, 0.35)"
+            : "rgba(36, 29, 21, 0.18)";
           ctx.lineWidth = isSelected ? 2 : 1.2;
           ctx.stroke();
 
@@ -725,12 +725,12 @@ export function NetworkGraph({ initialData }: NetworkGraphProps) {
           ctx.arc(node.x + r * 0.65, node.y - r * 0.65, 3.5, 0, Math.PI * 2);
           ctx.fillStyle = colors.dot;
           ctx.fill();
-          ctx.strokeStyle = "#141417";
+          ctx.strokeStyle = isSelected ? "#241D15" : "#FFFFFF";
           ctx.lineWidth = 1.2;
           ctx.stroke();
 
           // Initials
-          ctx.fillStyle = isSelected ? "#09090B" : "#E4E4E7";
+          ctx.fillStyle = isSelected ? "#F1EAE0" : "#241D15";
           ctx.font = "500 10px var(--font-sans), Inter, sans-serif";
           ctx.textAlign = "center";
           ctx.textBaseline = "middle";
@@ -741,15 +741,15 @@ export function NetworkGraph({ initialData }: NetworkGraphProps) {
             const textWidth = ctx.measureText(node.name).width;
             const padX = 5;
 
-            ctx.fillStyle = "#121215";
-            ctx.strokeStyle = isSelected ? "rgba(255, 255, 255, 0.3)" : "rgba(255, 255, 255, 0.08)";
+            ctx.fillStyle = "#241D15";
+            ctx.strokeStyle = isSelected ? "rgba(255, 255, 255, 0.3)" : "rgba(255, 255, 255, 0.1)";
             ctx.lineWidth = 1;
             ctx.beginPath();
             ctx.roundRect(node.x - textWidth / 2 - padX, node.y + r + 4, textWidth + padX * 2, 16, 4);
             ctx.fill();
             ctx.stroke();
 
-            ctx.fillStyle = "#FAFAFA";
+            ctx.fillStyle = "#F1EAE0";
             ctx.textAlign = "center";
             ctx.textBaseline = "middle";
             ctx.fillText(node.name, node.x, node.y + r + 12);
@@ -762,7 +762,7 @@ export function NetworkGraph({ initialData }: NetworkGraphProps) {
               if (subtext) {
                 const subStr = subtext.length > 22 ? `${subtext.slice(0, 20)}...` : subtext;
                 ctx.font = "400 9px var(--font-sans), Inter, sans-serif";
-                ctx.fillStyle = "#A1A1AA";
+                ctx.fillStyle = "#B5A896";
                 ctx.fillText(subStr, node.x, node.y + r + 26);
               }
             }
@@ -934,7 +934,7 @@ export function NetworkGraph({ initialData }: NetworkGraphProps) {
   return (
     <div
       ref={containerRef}
-      className={`relative w-full overflow-hidden rounded-xl border border-white/[0.08] graph-canvas-bg transition-all duration-200 ${
+      className={`relative w-full overflow-hidden rounded-xl border border-border graph-canvas-bg transition-all duration-200 ${
         isFullscreen ? "fixed inset-0 z-50 h-screen rounded-none" : "h-[700px]"
       }`}
     >
@@ -951,22 +951,22 @@ export function NetworkGraph({ initialData }: NetworkGraphProps) {
       {/* TOP HEADER CONTROLS BAR */}
       <div className="absolute top-3 left-3 z-20 flex flex-wrap items-center gap-1.5">
         <div className="relative w-52 sm:w-60 max-w-[calc(100vw-8rem)]">
-          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-zinc-500" />
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground" />
           <Input
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder={t("graph.searchPlaceholder")}
-            className="pl-8 pr-3 h-7 bg-zinc-900/90 border-white/[0.08] text-xs text-white placeholder:text-zinc-500 rounded-md focus:border-zinc-500"
+            className="pl-8 pr-3 h-7 bg-card/90 border-border text-xs text-foreground placeholder:text-muted-foreground rounded-md focus:border-accent"
           />
         </div>
 
-        <div className="hidden lg:flex items-center gap-0.5 bg-zinc-900/90 p-0.5 rounded-md border border-white/[0.08]">
+        <div className="hidden lg:flex items-center gap-0.5 bg-card/90 p-0.5 rounded-md border border-border">
           <button
             onClick={() => setSelectedCategory("ALL")}
             className={`px-2 py-0.5 text-[11px] font-normal rounded transition-colors ${
               selectedCategory === "ALL"
-                ? "bg-zinc-800 text-white"
-                : "text-zinc-400 hover:text-zinc-200"
+                ? "bg-secondary text-foreground"
+                : "text-muted-foreground hover:text-foreground"
             }`}
           >
             {t("graph.all")} ({graphData.stats.totalContacts})
@@ -980,8 +980,8 @@ export function NetworkGraph({ initialData }: NetworkGraphProps) {
                 onClick={() => setSelectedCategory(selectedCategory === cat ? "ALL" : cat)}
                 className={`flex items-center gap-1.5 px-2 py-0.5 text-[11px] font-normal rounded transition-colors ${
                   selectedCategory === cat
-                    ? "bg-zinc-800 text-white"
-                    : "text-zinc-400 hover:text-zinc-200"
+                    ? "bg-secondary text-foreground"
+                    : "text-muted-foreground hover:text-foreground"
                 }`}
               >
                 <span
@@ -989,7 +989,7 @@ export function NetworkGraph({ initialData }: NetworkGraphProps) {
                   style={{ backgroundColor: CATEGORY_COLORS[cat].dot }}
                 />
                 {t(`category.${cat}`)}
-                <span className="text-[10px] text-zinc-500 font-mono">{count}</span>
+                <span className="text-[10px] text-muted-foreground font-mono">{count}</span>
               </button>
             );
           })}
@@ -999,7 +999,7 @@ export function NetworkGraph({ initialData }: NetworkGraphProps) {
           size="sm"
           variant="outline"
           onClick={() => setShowControlsMenu(!showControlsMenu)}
-          className="h-7 px-2 bg-zinc-900/90 border-white/[0.08] text-zinc-300 hover:text-white rounded-md text-xs gap-1.5"
+          className="h-7 px-2 bg-card/90 border-border text-muted-foreground hover:text-foreground rounded-md text-xs gap-1.5"
         >
           <Sliders className="size-3" />
           <span>{t("graph.filters")}</span>
@@ -1008,24 +1008,24 @@ export function NetworkGraph({ initialData }: NetworkGraphProps) {
 
       {/* FLOATING FILTER & PHYSICS POPUP */}
       {showControlsMenu && (
-        <div className="absolute top-12 left-3 z-30 w-60 rounded-lg border border-white/[0.08] bg-zinc-900/95 p-3 shadow-xl backdrop-blur-xl text-xs space-y-2.5">
-          <div className="flex items-center justify-between border-b border-white/[0.06] pb-1.5">
-            <span className="font-medium text-white flex items-center gap-1.5 text-xs">
-              <Sliders className="size-3 text-zinc-400" />
+        <div className="absolute top-12 left-3 z-30 w-60 rounded-lg border border-border bg-card/95 p-3 shadow-xl backdrop-blur-xl text-xs space-y-2.5">
+          <div className="flex items-center justify-between border-b border-border pb-1.5">
+            <span className="font-medium text-foreground flex items-center gap-1.5 text-xs">
+              <Sliders className="size-3 text-muted-foreground" />
               {t("graph.parameters")}
             </span>
             <button
               onClick={() => setShowControlsMenu(false)}
-              className="text-zinc-400 hover:text-white text-xs"
+              className="text-muted-foreground hover:text-foreground text-xs"
             >
               ✕
             </button>
           </div>
 
           <div className="space-y-1">
-            <div className="flex justify-between text-zinc-400 text-[11px]">
+            <div className="flex justify-between text-muted-foreground text-[11px]">
               <span>{t("graph.minScore")}</span>
-              <span className="font-mono text-zinc-200">{minScore} / 10</span>
+              <span className="font-mono text-foreground">{minScore} / 10</span>
             </div>
             <input
               type="range"
@@ -1033,55 +1033,55 @@ export function NetworkGraph({ initialData }: NetworkGraphProps) {
               max="10"
               value={minScore}
               onChange={(e) => setMinScore(Number(e.target.value))}
-              className="w-full accent-white h-1 bg-zinc-800 rounded"
+              className="w-full accent-primary h-1 bg-secondary rounded"
             />
           </div>
 
           <div className="flex items-center justify-between py-0.5">
-            <span className="text-zinc-300 flex items-center gap-1.5 text-xs">
-              <Building2 className="size-3 text-zinc-400" />
+            <span className="text-muted-foreground flex items-center gap-1.5 text-xs">
+              <Building2 className="size-3 text-muted-foreground" />
               {t("graph.companies")}
             </span>
             <button
               onClick={() => setShowCompanyNodes(!showCompanyNodes)}
               className={`relative inline-flex h-3.5 w-6.5 shrink-0 cursor-pointer rounded-full transition-colors ${
-                showCompanyNodes ? "bg-zinc-200" : "bg-zinc-700"
+                showCompanyNodes ? "bg-accent" : "bg-secondary"
               }`}
             >
               <span
-                className={`inline-block size-2.5 rounded-full ${
-                  showCompanyNodes ? "bg-zinc-950 translate-x-3 translate-y-0.5" : "bg-zinc-400 translate-x-0.5 translate-y-0.5"
+                className={`inline-block size-2.5 rounded-full bg-card ${
+                  showCompanyNodes ? "translate-x-3 translate-y-0.5" : "translate-x-0.5 translate-y-0.5"
                 } transition-transform`}
               />
             </button>
           </div>
 
           <div className="flex items-center justify-between py-0.5">
-            <span className="text-zinc-300 flex items-center gap-1.5 text-xs">
-              <Zap className="size-3 text-zinc-400" />
+            <span className="text-muted-foreground flex items-center gap-1.5 text-xs">
+              <Zap className="size-3 text-muted-foreground" />
               {t("graph.animation")}
             </span>
             <button
               onClick={() => setShowParticles(!showParticles)}
               className={`relative inline-flex h-3.5 w-6.5 shrink-0 cursor-pointer rounded-full transition-colors ${
-                showParticles ? "bg-zinc-200" : "bg-zinc-700"
+                showParticles ? "bg-accent" : "bg-secondary"
               }`}
             >
               <span
-                className={`inline-block size-2.5 rounded-full ${
-                  showParticles ? "bg-zinc-950 translate-x-3 translate-y-0.5" : "bg-zinc-400 translate-x-0.5 translate-y-0.5"
+                className={`inline-block size-2.5 rounded-full bg-card ${
+                  showParticles ? "translate-x-3 translate-y-0.5" : "translate-x-0.5 translate-y-0.5"
                 } transition-transform`}
               />
             </button>
           </div>
 
-          <div className="flex items-center justify-between pt-1 border-t border-white/[0.06]">
-            <span className="text-zinc-400 text-[11px]">{t("graph.physics")}</span>
+          <div className="flex items-center justify-between pt-1 border-t border-border">
+            <span className="text-muted-foreground text-[11px]">{t("graph.physics")}</span>
             <Button
               size="sm"
               variant="outline"
               onClick={() => setIsPhysicsPaused(!isPhysicsPaused)}
-              className="h-5 text-[10px] px-2 bg-zinc-800 border-zinc-700 text-zinc-300 hover:text-white"
+              className="h-5 text-[10px] px-2 bg-secondary border-border text-secondary-foreground hover:text-foreground"
             >
               {isPhysicsPaused ? t("graph.physicsResume") : t("graph.physicsFreeze")}
             </Button>
@@ -1090,35 +1090,35 @@ export function NetworkGraph({ initialData }: NetworkGraphProps) {
       )}
 
       {/* TOP RIGHT STATS HUD BAR */}
-      <div className="absolute top-3 right-3 z-20 hidden md:flex items-center gap-2 bg-zinc-900/90 px-2.5 py-1 rounded-md border border-white/[0.08] text-xs">
-        <div className="flex items-center gap-1.5 text-zinc-300">
-          <span className="size-1.5 rounded-full bg-zinc-400" />
-          <span className="text-white font-medium tabular-nums">{filteredNodes.length}</span>
-          <span className="text-zinc-500">{t("graph.nodesUnit")}</span>
+      <div className="absolute top-3 right-3 z-20 hidden md:flex items-center gap-2 bg-card/90 px-2.5 py-1 rounded-md border border-border text-xs">
+        <div className="flex items-center gap-1.5 text-muted-foreground">
+          <span className="size-1.5 rounded-full bg-accent" />
+          <span className="text-foreground font-medium tabular-nums">{filteredNodes.length}</span>
+          <span className="text-muted-foreground">{t("graph.nodesUnit")}</span>
         </div>
-        <span className="text-zinc-700">•</span>
-        <div className="flex items-center gap-1 text-zinc-300">
-          <span className="text-white font-medium tabular-nums">{filteredLinks.length}</span>
-          <span className="text-zinc-500">{t("graph.linksUnit")}</span>
+        <span className="text-border">•</span>
+        <div className="flex items-center gap-1 text-muted-foreground">
+          <span className="text-foreground font-medium tabular-nums">{filteredLinks.length}</span>
+          <span className="text-muted-foreground">{t("graph.linksUnit")}</span>
         </div>
-        <span className="text-zinc-700">•</span>
+        <span className="text-border">•</span>
         <button
           onClick={refreshGraph}
           disabled={isRefreshing}
-          className="text-zinc-400 hover:text-white p-0.5 transition-colors"
+          className="text-muted-foreground hover:text-foreground p-0.5 transition-colors"
           title={t("graph.refresh")}
         >
-          <RefreshCw className={`size-3 ${isRefreshing ? "animate-spin text-zinc-200" : ""}`} />
+          <RefreshCw className={`size-3 ${isRefreshing ? "animate-spin text-accent" : ""}`} />
         </button>
       </div>
 
       {/* BOTTOM LEFT CAMERA CONTROLS BAR */}
-      <div className="absolute bottom-3 left-3 z-20 flex items-center gap-0.5 bg-zinc-900/90 p-0.5 rounded-md border border-white/[0.08]">
+      <div className="absolute bottom-3 left-3 z-20 flex items-center gap-0.5 bg-card/90 p-0.5 rounded-md border border-border">
         <Button
           size="icon"
           variant="ghost"
           onClick={() => handleZoom("in")}
-          className="size-6 rounded text-zinc-400 hover:text-white hover:bg-white/10"
+          className="size-6 rounded text-muted-foreground hover:text-foreground hover:bg-muted"
           title={t("graph.zoomIn")}
         >
           <ZoomIn className="size-3.5" />
@@ -1127,7 +1127,7 @@ export function NetworkGraph({ initialData }: NetworkGraphProps) {
           size="icon"
           variant="ghost"
           onClick={() => handleZoom("out")}
-          className="size-6 rounded text-zinc-400 hover:text-white hover:bg-white/10"
+          className="size-6 rounded text-muted-foreground hover:text-foreground hover:bg-muted"
           title={t("graph.zoomOut")}
         >
           <ZoomOut className="size-3.5" />
@@ -1136,17 +1136,17 @@ export function NetworkGraph({ initialData }: NetworkGraphProps) {
           size="icon"
           variant="ghost"
           onClick={fitToScreen}
-          className="size-6 rounded text-zinc-400 hover:text-white hover:bg-white/10"
+          className="size-6 rounded text-muted-foreground hover:text-foreground hover:bg-muted"
           title={t("graph.center")}
         >
           <RotateCcw className="size-3" />
         </Button>
-        <div className="h-3 w-px bg-white/[0.08] mx-0.5" />
+        <div className="h-3 w-px bg-border mx-0.5" />
         <Button
           size="icon"
           variant="ghost"
           onClick={toggleFullscreen}
-          className="size-6 rounded text-zinc-400 hover:text-white hover:bg-white/10"
+          className="size-6 rounded text-muted-foreground hover:text-foreground hover:bg-muted"
           title={t("graph.fullscreen")}
         >
           {isFullscreen ? <Minimize2 className="size-3" /> : <Maximize2 className="size-3" />}
@@ -1154,19 +1154,19 @@ export function NetworkGraph({ initialData }: NetworkGraphProps) {
       </div>
 
       {/* BOTTOM RIGHT MINI-MAP NAVIGATOR */}
-      <div className="absolute bottom-3 right-3 z-20 hidden sm:block rounded-md border border-white/[0.08] bg-zinc-900/95 p-1">
+      <div className="absolute bottom-3 right-3 z-20 hidden sm:block rounded-md border border-border bg-card/95 p-1">
         <canvas
           ref={miniMapCanvasRef}
           width={100}
           height={65}
-          className="rounded bg-zinc-950 block"
+          className="rounded bg-muted block"
         />
       </div>
 
       {/* HOVER TOOLTIP */}
       {hoveredNode && tooltipPos && !selectedNode && (
         <div
-          className="pointer-events-none fixed z-40 w-52 rounded-lg border border-white/[0.08] bg-zinc-900/98 p-2.5 text-xs text-white shadow-xl transition-opacity duration-150"
+          className="pointer-events-none fixed z-40 w-52 rounded-lg border border-border bg-card/98 p-2.5 text-xs text-foreground shadow-xl transition-opacity duration-150"
           style={{
             left: `${tooltipPos.x}px`,
             top: `${tooltipPos.y}px`,
@@ -1175,8 +1175,8 @@ export function NetworkGraph({ initialData }: NetworkGraphProps) {
           {hoveredNode.nodeType === "contact" ? (
             <div className="space-y-1">
               <div className="flex items-center justify-between">
-                <span className="font-medium text-white truncate">{hoveredNode.name}</span>
-                <span className="inline-flex items-center gap-1 rounded bg-zinc-800 px-1.5 py-0.2 text-[10px] text-zinc-300">
+                <span className="font-medium text-foreground truncate">{hoveredNode.name}</span>
+                <span className="inline-flex items-center gap-1 rounded bg-secondary px-1.5 py-0.2 text-[10px] text-secondary-foreground">
                   <span
                     className="size-1.5 rounded-full"
                     style={{ backgroundColor: CATEGORY_COLORS[hoveredNode.category].dot }}
@@ -1185,21 +1185,21 @@ export function NetworkGraph({ initialData }: NetworkGraphProps) {
                 </span>
               </div>
               {hoveredNode.role && (
-                <p className="text-zinc-400 text-[11px]">{hoveredNode.role}</p>
+                <p className="text-muted-foreground text-[11px]">{hoveredNode.role}</p>
               )}
               {hoveredNode.companyName && (
-                <p className="text-zinc-300 text-[11px]">{hoveredNode.companyName}</p>
+                <p className="text-muted-foreground text-[11px]">{hoveredNode.companyName}</p>
               )}
               {hoveredNode.usefulnessScore != null && (
-                <p className="text-zinc-400 text-[11px] font-mono">
+                <p className="text-muted-foreground text-[11px] font-mono">
                   ★ {hoveredNode.usefulnessScore} / 10
                 </p>
               )}
             </div>
           ) : (
             <div className="space-y-0.5">
-              <div className="font-medium text-white">{hoveredNode.name}</div>
-              <p className="text-zinc-400 text-[11px]">
+              <div className="font-medium text-foreground">{hoveredNode.name}</div>
+              <p className="text-muted-foreground text-[11px]">
                 {`${hoveredNode.contactCount} ${t("graph.contactsUnit")}`}
               </p>
             </div>

@@ -6,12 +6,12 @@ export function LanguageSwitcher() {
   const { locale, setLocale } = useTranslation();
 
   return (
-    <div className="inline-flex items-center gap-0.5 rounded-md border border-white/[0.08] bg-zinc-900 p-0.5 text-[11px] font-medium">
+    <div className="inline-flex items-center gap-0.5 rounded-md border border-border bg-card p-0.5 text-[11px] font-medium">
       <button
         onClick={() => setLocale("en")}
         aria-pressed={locale === "en"}
         className={`rounded px-1.5 py-0.5 transition-colors ${
-          locale === "en" ? "bg-zinc-800 text-white" : "text-zinc-500 hover:text-zinc-200"
+          locale === "en" ? "bg-secondary text-foreground" : "text-muted-foreground hover:text-foreground"
         }`}
       >
         EN
@@ -20,7 +20,7 @@ export function LanguageSwitcher() {
         onClick={() => setLocale("uk")}
         aria-pressed={locale === "uk"}
         className={`rounded px-1.5 py-0.5 transition-colors ${
-          locale === "uk" ? "bg-zinc-800 text-white" : "text-zinc-500 hover:text-zinc-200"
+          locale === "uk" ? "bg-secondary text-foreground" : "text-muted-foreground hover:text-foreground"
         }`}
       >
         UA

@@ -78,11 +78,11 @@ export function ContactInsightsPanel({ contact }: { contact: ContactDetailType }
       {/* Community Memberships */}
       {contact.communities && contact.communities.length > 0 && (
         <div className="flex flex-wrap items-center gap-1.5">
-          <UsersRound className="size-3.5 text-zinc-500" />
+          <UsersRound className="size-3.5 text-muted-foreground" />
           {contact.communities.map((community) => (
             <span
               key={community.id}
-              className="inline-flex items-center rounded-md border border-white/[0.08] bg-zinc-900 px-2 py-0.5 text-xs text-zinc-300"
+              className="inline-flex items-center rounded-md border border-border bg-muted px-2 py-0.5 text-xs text-muted-foreground"
             >
               {community.name}
             </span>
@@ -93,34 +93,34 @@ export function ContactInsightsPanel({ contact }: { contact: ContactDetailType }
       {/* Strategic Profile Matrix */}
       <div className="grid gap-3 sm:grid-cols-3">
         {/* Card 1: Temperament */}
-        <div className="rounded-xl border border-white/[0.08] bg-zinc-900/30 p-4 space-y-1.5">
-          <div className="flex items-center gap-1.5 text-[11px] font-medium text-zinc-400 uppercase tracking-wider">
-            <Brain className="size-3.5 text-zinc-500" />
+        <div className="rounded-xl border border-border bg-card p-4 space-y-1.5">
+          <div className="flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground uppercase tracking-wider">
+            <Brain className="size-3.5 text-muted-foreground" />
             {t("contact.temperament")}
           </div>
-          <p className="text-xs text-zinc-200 leading-relaxed">
+          <p className="text-xs text-foreground leading-relaxed">
             {contact.temperament || t("contact.temperamentEmpty")}
           </p>
         </div>
 
         {/* Card 2: Needs */}
-        <div className="rounded-xl border border-white/[0.08] bg-zinc-900/30 p-4 space-y-1.5">
-          <div className="flex items-center gap-1.5 text-[11px] font-medium text-zinc-400 uppercase tracking-wider">
-            <Target className="size-3.5 text-zinc-500" />
+        <div className="rounded-xl border border-border bg-card p-4 space-y-1.5">
+          <div className="flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground uppercase tracking-wider">
+            <Target className="size-3.5 text-muted-foreground" />
             {t("contact.needs")}
           </div>
-          <p className="text-xs text-zinc-200 leading-relaxed">
+          <p className="text-xs text-foreground leading-relaxed">
             {contact.needs || t("contact.needsEmpty")}
           </p>
         </div>
 
         {/* Card 3: Value Potential */}
-        <div className="rounded-xl border border-white/[0.08] bg-zinc-900/30 p-4 space-y-1.5">
-          <div className="flex items-center gap-1.5 text-[11px] font-medium text-zinc-400 uppercase tracking-wider">
-            <Sparkles className="size-3.5 text-zinc-500" />
+        <div className="rounded-xl border border-border bg-card p-4 space-y-1.5">
+          <div className="flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground uppercase tracking-wider">
+            <Sparkles className="size-3.5 text-muted-foreground" />
             {t("contact.valuePotential")}
           </div>
-          <p className="text-xs text-zinc-200 leading-relaxed">
+          <p className="text-xs text-foreground leading-relaxed">
             {contact.valuePotential || t("contact.valuePotentialEmpty")}
           </p>
         </div>
@@ -128,33 +128,33 @@ export function ContactInsightsPanel({ contact }: { contact: ContactDetailType }
 
       {/* Full AI Summary */}
       {contact.fullSummary && (
-        <div className="rounded-xl border border-white/[0.08] bg-zinc-900/30 p-4 space-y-1.5">
-          <div className="flex items-center gap-1.5 text-[11px] font-medium text-zinc-400 uppercase tracking-wider">
-            <MessageSquare className="size-3.5 text-zinc-500" />
+        <div className="rounded-xl border border-border bg-card p-4 space-y-1.5">
+          <div className="flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground uppercase tracking-wider">
+            <MessageSquare className="size-3.5 text-muted-foreground" />
             {t("contact.fullSummary")}
           </div>
-          <p className="text-xs leading-relaxed text-zinc-300 whitespace-pre-wrap">
+          <p className="text-xs leading-relaxed text-foreground/90 whitespace-pre-wrap">
             {contact.fullSummary}
           </p>
         </div>
       )}
 
       {/* Direct Network Connections Manager */}
-      <div className="rounded-xl border border-white/[0.08] bg-zinc-900/30 p-4 space-y-3.5">
+      <div className="rounded-xl border border-border bg-card p-4 space-y-3.5">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Link2 className="size-3.5 text-zinc-400" />
-            <h3 className="text-xs font-semibold text-white uppercase tracking-wider">
+            <Link2 className="size-3.5 text-muted-foreground" />
+            <h3 className="text-xs font-semibold text-foreground uppercase tracking-wider">
               {t("contact.connectionsTitle")}
             </h3>
-            <span className="rounded-md border border-white/[0.06] bg-zinc-900 px-1.5 py-0.5 text-[10px] text-zinc-400 font-mono">
+            <span className="rounded-md border border-border bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground font-mono">
               {directConnections.length}
             </span>
           </div>
           <Button
             size="sm"
             onClick={() => setIsConnectOpen(true)}
-            className="bg-white hover:bg-zinc-200 text-zinc-950 text-xs h-7 px-3 gap-1.5 rounded-md font-medium"
+            className="bg-primary hover:bg-primary/90 text-primary-foreground text-xs h-7 px-3 gap-1.5 rounded-md font-medium"
           >
             <Plus className="size-3" />
             {t("contact.addConnection")}
@@ -162,7 +162,7 @@ export function ContactInsightsPanel({ contact }: { contact: ContactDetailType }
         </div>
 
         {directConnections.length === 0 ? (
-          <div className="rounded-lg border border-dashed border-zinc-800 p-6 text-center text-xs text-zinc-500">
+          <div className="rounded-lg border border-dashed border-border p-6 text-center text-xs text-muted-foreground">
             {t("contact.noConnections")}
           </div>
         ) : (
@@ -173,11 +173,11 @@ export function ContactInsightsPanel({ contact }: { contact: ContactDetailType }
               return (
                 <div
                   key={conn.id}
-                  className="flex items-center justify-between rounded-lg border border-white/[0.06] bg-zinc-950/40 p-2.5 text-xs transition-colors hover:bg-zinc-900/60"
+                  className="flex items-center justify-between rounded-lg border border-border bg-muted/60 p-2.5 text-xs transition-colors hover:bg-muted"
                 >
                   <div className="flex items-center gap-2.5 min-w-0">
-                    <Avatar className="size-7 shrink-0 bg-zinc-800">
-                      <AvatarFallback className="text-[10px] font-medium bg-zinc-800 text-zinc-300">
+                    <Avatar className="size-7 shrink-0 bg-secondary">
+                      <AvatarFallback className="text-[10px] font-medium bg-secondary text-secondary-foreground">
                         {initials(peer.fullName)}
                       </AvatarFallback>
                     </Avatar>
@@ -186,15 +186,15 @@ export function ContactInsightsPanel({ contact }: { contact: ContactDetailType }
                       <div className="flex items-center gap-1.5">
                         <Link
                           href={`/contacts/${peer.id}`}
-                          className="font-medium text-white hover:underline truncate text-xs"
+                          className="font-medium text-foreground hover:underline truncate text-xs"
                         >
                           {peer.fullName}
                         </Link>
-                        <span className="text-[10px] text-zinc-400 rounded bg-zinc-900 px-1 py-0.2 border border-white/[0.06]">
+                        <span className="text-[10px] text-muted-foreground rounded bg-card px-1 py-0.2 border border-border">
                           {conn.relationship || t("contact.defaultRelationship")}
                         </span>
                       </div>
-                      <p className="text-zinc-500 text-[11px] truncate">
+                      <p className="text-muted-foreground text-[11px] truncate">
                         {peer.role || peer.companyName || t("contact.defaultRole")}
                       </p>
                     </div>
@@ -203,7 +203,7 @@ export function ContactInsightsPanel({ contact }: { contact: ContactDetailType }
                   <div className="flex items-center gap-1 shrink-0 ml-2">
                     <Link
                       href={`/contacts/${peer.id}`}
-                      className="p-1 text-zinc-400 hover:text-white rounded"
+                      className="p-1 text-muted-foreground hover:text-foreground rounded"
                       title={t("contact.viewProfile")}
                     >
                       <ExternalLink className="size-3" />
@@ -211,7 +211,7 @@ export function ContactInsightsPanel({ contact }: { contact: ContactDetailType }
                     <button
                       onClick={() => handleDeleteConnection(conn.id)}
                       disabled={isDeleting}
-                      className="p-1 text-zinc-500 hover:text-red-400 rounded transition-colors"
+                      className="p-1 text-muted-foreground hover:text-destructive rounded transition-colors"
                       title={t("contact.removeConnection")}
                     >
                       <Trash2 className="size-3" />

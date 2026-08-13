@@ -27,8 +27,8 @@ export function CommunityAccordion({ communities }: { communities: CommunityWith
 
   if (communities.length === 0) {
     return (
-      <div className="rounded-xl border border-dashed border-white/10 bg-zinc-950/40 p-10 text-center text-xs text-zinc-400">
-        <UsersRound className="mx-auto size-6 text-zinc-600 mb-2" />
+      <div className="rounded-xl border border-dashed border-border bg-muted p-10 text-center text-xs text-muted-foreground">
+        <UsersRound className="mx-auto size-6 text-muted-foreground mb-2" />
         {t("community.empty")}
       </div>
     );
@@ -43,19 +43,19 @@ export function CommunityAccordion({ communities }: { communities: CommunityWith
           <AccordionItem
             key={community.id}
             value={community.id}
-            className="rounded-xl border border-white/[0.07] bg-zinc-900/30 px-4 transition-colors hover:border-white/[0.12]"
+            className="rounded-xl border border-border bg-card px-4 transition-colors hover:border-accent/40"
           >
             <AccordionTrigger className="py-3 hover:no-underline">
               <div className="flex flex-wrap items-center gap-2 text-left">
-                <div className="flex size-6 items-center justify-center rounded-md bg-zinc-800 text-zinc-400">
+                <div className="flex size-6 items-center justify-center rounded-md bg-secondary text-muted-foreground">
                   <UsersRound className="size-3.5" />
                 </div>
-                <span className="font-medium text-white text-xs tracking-tight">{community.name}</span>
+                <span className="font-medium text-foreground text-xs tracking-tight">{community.name}</span>
                 {community.description && (
-                  <span className="text-[11px] text-zinc-500 font-normal">({community.description})</span>
+                  <span className="text-[11px] text-muted-foreground font-normal">({community.description})</span>
                 )}
-                <span className="ml-1 inline-flex items-center gap-1 rounded-md border border-white/[0.06] bg-zinc-900 px-1.5 py-0.5 text-[10px] text-zinc-400 font-mono">
-                  <Users className="size-2.5 text-zinc-500" />
+                <span className="ml-1 inline-flex items-center gap-1 rounded-md border border-border bg-secondary px-1.5 py-0.5 text-[10px] text-muted-foreground font-mono">
+                  <Users className="size-2.5 text-muted-foreground" />
                   {community.contacts.length}
                 </span>
               </div>
@@ -64,21 +64,21 @@ export function CommunityAccordion({ communities }: { communities: CommunityWith
               <div className="mb-2.5 flex items-center justify-end gap-1">
                 <button
                   onClick={() => setEditingCommunity(community)}
-                  className="flex items-center gap-1 rounded-md px-2 py-1 text-[11px] text-zinc-400 hover:text-white hover:bg-white/5 transition-colors"
+                  className="flex items-center gap-1 rounded-md px-2 py-1 text-[11px] text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
                 >
                   <Pencil className="size-3" />
                   {t("common.edit")}
                 </button>
                 <button
                   onClick={() => setDeletingCommunity(community)}
-                  className="flex items-center gap-1 rounded-md px-2 py-1 text-[11px] text-zinc-400 hover:text-red-400 hover:bg-white/5 transition-colors"
+                  className="flex items-center gap-1 rounded-md px-2 py-1 text-[11px] text-muted-foreground hover:text-destructive hover:bg-muted transition-colors"
                 >
                   <Trash2 className="size-3" />
                   {t("common.delete")}
                 </button>
               </div>
               {community.contacts.length === 0 ? (
-                <div className="rounded-lg border border-dashed border-zinc-800 p-6 text-center text-xs text-zinc-500">
+                <div className="rounded-lg border border-dashed border-border p-6 text-center text-xs text-muted-foreground">
                   {t("community.noContacts")}
                 </div>
               ) : (

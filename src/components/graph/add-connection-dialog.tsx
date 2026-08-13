@@ -89,27 +89,27 @@ export function AddConnectionDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md border border-white/[0.08] bg-zinc-900/98 text-foreground backdrop-blur-2xl shadow-2xl">
+      <DialogContent className="sm:max-w-md border border-border bg-card text-foreground backdrop-blur-2xl shadow-2xl">
         <DialogHeader>
-          <div className="flex items-center gap-2 text-zinc-300">
-            <div className="flex size-7 items-center justify-center rounded-md bg-zinc-800 border border-white/[0.06]">
+          <div className="flex items-center gap-2 text-muted-foreground">
+            <div className="flex size-7 items-center justify-center rounded-md bg-secondary border border-border">
               <Link2 className="size-3.5" />
             </div>
-            <DialogTitle className="text-sm font-semibold text-white">
+            <DialogTitle className="text-sm font-semibold text-foreground">
               {t("connection.title")}
             </DialogTitle>
           </div>
-          <DialogDescription className="text-zinc-400 text-xs">{t("connection.description", { name: fromContact.name })}</DialogDescription>
+          <DialogDescription className="text-muted-foreground text-xs">{t("connection.description", { name: fromContact.name })}</DialogDescription>
         </DialogHeader>
 
         <div className="flex flex-col gap-3.5 py-1 text-xs">
           {/* Target Contact Selector */}
           <div className="flex flex-col gap-1">
-            <Label className="text-xs font-medium text-zinc-300">{t("connection.selectContact")}</Label>
+            <Label className="text-xs font-medium text-muted-foreground">{t("connection.selectContact")}</Label>
             <select
               value={toContactId}
               onChange={(e) => setToContactId(e.target.value)}
-              className="w-full rounded-md border border-zinc-800 bg-zinc-950 px-2.5 py-1.5 text-xs text-zinc-100 outline-none focus:border-zinc-500"
+              className="w-full rounded-md border border-border bg-muted px-2.5 py-1.5 text-xs text-foreground outline-none focus:border-accent"
               disabled={isPending}
             >
               <option value="" disabled>
@@ -125,7 +125,7 @@ export function AddConnectionDialog({
 
           {/* Relationship Presets */}
           <div className="flex flex-col gap-1.5">
-            <Label className="text-xs font-medium text-zinc-300">{t("connection.relationshipType")}</Label>
+            <Label className="text-xs font-medium text-muted-foreground">{t("connection.relationshipType")}</Label>
             <div className="flex flex-wrap gap-1">
               {RELATIONSHIP_PRESET_KEYS.map((key) => (
                 <button
@@ -134,8 +134,8 @@ export function AddConnectionDialog({
                   onClick={() => setRelationship(t(key))}
                   className={`rounded px-2 py-0.5 text-xs transition-colors ${
                     relationship === t(key)
-                      ? "bg-zinc-100 text-zinc-950 font-medium"
-                      : "bg-zinc-950 border border-zinc-800 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800"
+                      ? "bg-primary text-primary-foreground font-medium"
+                      : "bg-muted border border-border text-muted-foreground hover:text-foreground hover:bg-muted"
                   }`}
                 >
                   {t(key)}
@@ -146,7 +146,7 @@ export function AddConnectionDialog({
               value={relationship}
               onChange={(e) => setRelationship(e.target.value)}
               placeholder={t("connection.relationshipPlaceholder")}
-              className="mt-1 bg-zinc-950 border-zinc-800 text-base md:text-xs h-7 rounded-md"
+              className="mt-1 bg-muted border-border text-base md:text-xs h-7 rounded-md"
               disabled={isPending}
             />
           </div>
@@ -154,8 +154,8 @@ export function AddConnectionDialog({
           {/* Strength (1-5) */}
           <div className="flex flex-col gap-1.5">
             <div className="flex items-center justify-between">
-              <Label className="text-xs font-medium text-zinc-300">{t("connection.strength")}</Label>
-              <span className="text-xs text-zinc-400 font-mono">{strength} / 5</span>
+              <Label className="text-xs font-medium text-muted-foreground">{t("connection.strength")}</Label>
+              <span className="text-xs text-muted-foreground font-mono">{strength} / 5</span>
             </div>
             <div className="flex items-center gap-1.5">
               {[1, 2, 3, 4, 5].map((lvl) => (
@@ -165,11 +165,11 @@ export function AddConnectionDialog({
                   onClick={() => setStrength(lvl)}
                   className={`flex flex-1 items-center justify-center gap-1 rounded py-1 text-xs transition-colors ${
                     strength >= lvl
-                      ? "bg-zinc-800 border border-zinc-700 text-white font-medium"
-                      : "bg-zinc-950 border border-zinc-800 text-zinc-500 hover:text-zinc-300"
+                      ? "bg-secondary border border-border text-foreground font-medium"
+                      : "bg-muted border border-border text-muted-foreground hover:text-foreground"
                   }`}
                 >
-                  <Star className={`size-2.5 ${strength >= lvl ? "fill-zinc-300 text-zinc-300" : ""}`} />
+                  <Star className={`size-2.5 ${strength >= lvl ? "fill-foreground text-foreground" : ""}`} />
                   {lvl}
                 </button>
               ))}
@@ -178,24 +178,24 @@ export function AddConnectionDialog({
 
           {/* Optional Notes */}
           <div className="flex flex-col gap-1">
-            <Label className="text-xs font-medium text-zinc-300">{t("connection.notes")}</Label>
+            <Label className="text-xs font-medium text-muted-foreground">{t("connection.notes")}</Label>
             <Textarea
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               placeholder={t("connection.notesPlaceholder")}
-              className="min-h-14 resize-none bg-zinc-950 border-zinc-800 text-base md:text-xs rounded-md"
+              className="min-h-14 resize-none bg-muted border-border text-base md:text-xs rounded-md"
               disabled={isPending}
             />
           </div>
         </div>
 
-        <DialogFooter className="border-t border-white/[0.06] pt-2.5">
+        <DialogFooter className="border-t border-border pt-2.5">
           <Button
             variant="outline"
             size="sm"
             onClick={() => onOpenChange(false)}
             disabled={isPending}
-            className="border-zinc-800 bg-zinc-900 text-zinc-300 hover:bg-zinc-800 h-7 text-xs"
+            className="border-border bg-card text-muted-foreground hover:bg-muted h-7 text-xs"
           >
             {t("common.cancel")}
           </Button>
@@ -203,7 +203,7 @@ export function AddConnectionDialog({
             size="sm"
             onClick={handleSubmit}
             disabled={isPending || !toContactId}
-            className="bg-white hover:bg-zinc-200 text-zinc-950 gap-1.5 h-7 text-xs font-medium"
+            className="bg-primary hover:bg-primary/90 text-primary-foreground gap-1.5 h-7 text-xs font-medium"
           >
             {isPending ? <Loader2 className="size-3 animate-spin" /> : <Plus className="size-3" />}
             {isPending ? t("connection.submitPending") : t("connection.submit")}

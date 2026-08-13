@@ -35,8 +35,8 @@ export function CompanyAccordion({
 
   if (companies.length === 0 && unassignedContacts.length === 0) {
     return (
-      <div className="rounded-xl border border-dashed border-white/10 bg-zinc-950/40 p-10 text-center text-xs text-zinc-400">
-        <Building2 className="mx-auto size-6 text-zinc-600 mb-2" />
+      <div className="rounded-xl border border-dashed border-border bg-muted p-10 text-center text-xs text-muted-foreground">
+        <Building2 className="mx-auto size-6 text-muted-foreground mb-2" />
         {t("company.empty")}
       </div>
     );
@@ -54,19 +54,19 @@ export function CompanyAccordion({
           <AccordionItem
             key={company.id}
             value={company.id}
-            className="rounded-xl border border-white/[0.07] bg-zinc-900/30 px-4 transition-colors hover:border-white/[0.12]"
+            className="rounded-xl border border-border bg-card px-4 transition-colors hover:border-accent/40"
           >
             <AccordionTrigger className="py-3 hover:no-underline">
               <div className="flex flex-wrap items-center gap-2 text-left">
-                <div className="flex size-6 items-center justify-center rounded-md bg-zinc-800 text-zinc-400">
+                <div className="flex size-6 items-center justify-center rounded-md bg-secondary text-muted-foreground">
                   <Building2 className="size-3.5" />
                 </div>
-                <span className="font-medium text-white text-xs tracking-tight">{company.name}</span>
+                <span className="font-medium text-foreground text-xs tracking-tight">{company.name}</span>
                 {company.industry && (
-                  <span className="text-[11px] text-zinc-500 font-normal">({company.industry})</span>
+                  <span className="text-[11px] text-muted-foreground font-normal">({company.industry})</span>
                 )}
-                <span className="ml-1 inline-flex items-center gap-1 rounded-md border border-white/[0.06] bg-zinc-900 px-1.5 py-0.5 text-[10px] text-zinc-400 font-mono">
-                  <Users className="size-2.5 text-zinc-500" />
+                <span className="ml-1 inline-flex items-center gap-1 rounded-md border border-border bg-secondary px-1.5 py-0.5 text-[10px] text-muted-foreground font-mono">
+                  <Users className="size-2.5 text-muted-foreground" />
                   {company.contacts.length}
                 </span>
               </div>
@@ -75,14 +75,14 @@ export function CompanyAccordion({
               <div className="mb-2.5 flex items-center justify-end gap-1">
                 <button
                   onClick={() => setEditingCompany(company)}
-                  className="flex items-center gap-1 rounded-md px-2 py-1 text-[11px] text-zinc-400 hover:text-white hover:bg-white/5 transition-colors"
+                  className="flex items-center gap-1 rounded-md px-2 py-1 text-[11px] text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
                 >
                   <Pencil className="size-3" />
                   {t("common.edit")}
                 </button>
                 <button
                   onClick={() => setDeletingCompany(company)}
-                  className="flex items-center gap-1 rounded-md px-2 py-1 text-[11px] text-zinc-400 hover:text-red-400 hover:bg-white/5 transition-colors"
+                  className="flex items-center gap-1 rounded-md px-2 py-1 text-[11px] text-muted-foreground hover:text-destructive hover:bg-muted transition-colors"
                 >
                   <Trash2 className="size-3" />
                   {t("common.delete")}
@@ -100,15 +100,15 @@ export function CompanyAccordion({
         {unassignedContacts.length > 0 && (
           <AccordionItem
             value={UNASSIGNED_VALUE}
-            className="rounded-xl border border-white/[0.07] bg-zinc-900/30 px-4 transition-colors hover:border-white/[0.12]"
+            className="rounded-xl border border-border bg-card px-4 transition-colors hover:border-accent/40"
           >
             <AccordionTrigger className="py-3 hover:no-underline">
               <div className="flex items-center gap-2 text-left">
-                <div className="flex size-6 items-center justify-center rounded-md bg-zinc-800 text-zinc-400">
+                <div className="flex size-6 items-center justify-center rounded-md bg-secondary text-muted-foreground">
                   <Users className="size-3.5" />
                 </div>
-                <span className="font-medium text-zinc-300 text-xs">{t("company.noCompany")}</span>
-                <span className="rounded-md border border-white/[0.06] bg-zinc-900 px-1.5 py-0.5 text-[10px] text-zinc-400 font-mono">
+                <span className="font-medium text-foreground text-xs">{t("company.noCompany")}</span>
+                <span className="rounded-md border border-border bg-secondary px-1.5 py-0.5 text-[10px] text-muted-foreground font-mono">
                   {unassignedContacts.length}
                 </span>
               </div>

@@ -2,7 +2,7 @@ import { LanguageSwitcher } from "@/components/language-switcher";
 
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="flex min-h-svh flex-col items-center justify-center bg-zinc-950 p-4">
+    <div className="flex min-h-svh flex-col items-center justify-center bg-background p-4">
       <div className="absolute top-4 right-4">
         <LanguageSwitcher />
       </div>

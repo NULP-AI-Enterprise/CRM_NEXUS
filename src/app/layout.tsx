@@ -1,12 +1,18 @@
 import type { Metadata } from "next";
-import { Inter, JetBrains_Mono } from "next/font/google";
+import { Alegreya, Manrope, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 
 import { Toaster } from "@/components/ui/sonner";
 import { I18nProvider } from "@/lib/i18n/context";
 import { getServerTranslation } from "@/lib/i18n/server";
 
-const fontSans = Inter({
+const fontHeading = Alegreya({
+  variable: "--font-heading",
+  subsets: ["latin", "cyrillic"],
+  display: "swap",
+});
+
+const fontSans = Manrope({
   variable: "--font-sans",
   subsets: ["latin", "cyrillic"],
   display: "swap",
@@ -32,12 +38,12 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang={locale}
-      className={`dark ${fontSans.variable} ${fontMono.variable} h-full antialiased font-sans`}
+      className={`${fontHeading.variable} ${fontSans.variable} ${fontMono.variable} h-full antialiased font-sans`}
     >
       <body className="min-h-full flex flex-col bg-background text-foreground tracking-[-0.01em]">
         <I18nProvider initialLocale={locale}>
           {children}
-          <Toaster theme="dark" position="bottom-right" richColors />
+          <Toaster theme="light" position="bottom-right" richColors />
         </I18nProvider>
       </body>
     </html>

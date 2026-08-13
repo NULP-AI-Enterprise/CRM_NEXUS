@@ -85,13 +85,13 @@ export function CompanyFormDialog({ open, onOpenChange, company, onSuccess }: Co
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md border border-white/[0.08] bg-zinc-900/98 text-foreground backdrop-blur-2xl shadow-2xl">
+      <DialogContent className="sm:max-w-md border border-border bg-card text-foreground backdrop-blur-2xl shadow-2xl">
         <DialogHeader>
-          <div className="flex items-center gap-2 text-zinc-300">
-            <div className="flex size-7 items-center justify-center rounded-md bg-zinc-800 border border-white/[0.06]">
+          <div className="flex items-center gap-2 text-muted-foreground">
+            <div className="flex size-7 items-center justify-center rounded-md bg-secondary border border-border">
               <Building2 className="size-3.5" />
             </div>
-            <DialogTitle className="text-sm font-semibold text-white">
+            <DialogTitle className="text-sm font-semibold text-foreground">
               {isEditMode ? t("company.form.editTitle") : t("company.form.createTitle")}
             </DialogTitle>
           </div>
@@ -102,45 +102,45 @@ export function CompanyFormDialog({ open, onOpenChange, company, onSuccess }: Co
 
         <div className="flex flex-col gap-3.5 py-1 text-xs">
           <div className="flex flex-col gap-1">
-            <Label className="text-xs font-medium text-zinc-300">{t("company.form.name")}</Label>
+            <Label className="text-xs font-medium text-muted-foreground">{t("company.form.name")}</Label>
             <Input
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder={t("company.form.namePlaceholder")}
-              className="bg-zinc-950 border-zinc-800 text-base md:text-xs h-8 rounded-md"
+              className="bg-muted border-border text-base md:text-xs h-8 rounded-md"
               disabled={isPending}
               autoFocus
             />
           </div>
           <div className="flex flex-col gap-1">
-            <Label className="text-xs font-medium text-zinc-300">{t("company.form.industry")}</Label>
+            <Label className="text-xs font-medium text-muted-foreground">{t("company.form.industry")}</Label>
             <Input
               value={industry}
               onChange={(e) => setIndustry(e.target.value)}
               placeholder={t("company.form.industryPlaceholder")}
-              className="bg-zinc-950 border-zinc-800 text-base md:text-xs h-8 rounded-md"
+              className="bg-muted border-border text-base md:text-xs h-8 rounded-md"
               disabled={isPending}
             />
           </div>
           <div className="flex flex-col gap-1">
-            <Label className="text-xs font-medium text-zinc-300">{t("company.form.description")}</Label>
+            <Label className="text-xs font-medium text-muted-foreground">{t("company.form.description")}</Label>
             <Textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder={t("company.form.descriptionPlaceholder")}
-              className="min-h-16 resize-none bg-zinc-950 border-zinc-800 text-base md:text-xs rounded-md"
+              className="min-h-16 resize-none bg-muted border-border text-base md:text-xs rounded-md"
               disabled={isPending}
             />
           </div>
         </div>
 
-        <DialogFooter className="border-t border-white/[0.06] pt-2.5">
+        <DialogFooter className="border-t border-border pt-2.5">
           <Button
             variant="outline"
             size="sm"
             onClick={() => onOpenChange(false)}
             disabled={isPending}
-            className="border-zinc-800 bg-zinc-900 text-zinc-300 hover:bg-zinc-800 h-7 text-xs"
+            className="border-border bg-secondary text-muted-foreground hover:bg-muted h-7 text-xs"
           >
             {t("common.cancel")}
           </Button>
@@ -148,7 +148,7 @@ export function CompanyFormDialog({ open, onOpenChange, company, onSuccess }: Co
             size="sm"
             onClick={handleSubmit}
             disabled={isPending || !name.trim()}
-            className="bg-white hover:bg-zinc-200 text-zinc-950 gap-1.5 h-7 text-xs font-medium"
+            className="bg-primary hover:bg-primary/90 text-primary-foreground gap-1.5 h-7 text-xs font-medium"
           >
             {isPending && <Loader2 className="size-3 animate-spin" />}
             {isPending ? t("common.saving") : t("common.save")}
