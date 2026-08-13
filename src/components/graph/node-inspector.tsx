@@ -322,7 +322,7 @@ export function NodeInspector({
                   value={quickNote}
                   onChange={(e) => setQuickNote(e.target.value)}
                   placeholder={t("inspector.notePlaceholder")}
-                  className="min-h-12 resize-none bg-zinc-950/60 border-zinc-800 text-xs rounded-md"
+                  className="min-h-12 resize-none bg-zinc-950/60 border-zinc-800 text-base md:text-xs rounded-md"
                   disabled={isSubmittingNote}
                 />
                 <Button

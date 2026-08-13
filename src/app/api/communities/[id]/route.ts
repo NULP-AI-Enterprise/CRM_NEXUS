@@ -5,9 +5,8 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { checkRateLimit, getClientIp, rateLimitedResponse } from "@/lib/rate-limit";
 
-const companyInputSchema = z.object({
+const communityInputSchema = z.object({
   name: z.string().trim().min(1).max(200),
-  industry: z.string().trim().max(200).nullish(),
   description: z.string().trim().max(2000).nullish(),
 });
 
@@ -23,9 +22,9 @@ export async function PATCH(request: Request, { params }: RouteContext) {
   }
 
   const { id } = await params;
-  const existing = await prisma.company.findFirst({ where: { id, userId: session.user.id } });
+  const existing = await prisma.community.findFirst({ where: { id, userId: session.user.id } });
   if (!existing) {
-    return NextResponse.json({ error: "Company not found." }, { status: 404 });
+    return NextResponse.json({ error: "Community not found." }, { status: 404 });
   }
 
   let body: unknown;
@@ -35,7 +34,7 @@ export async function PATCH(request: Request, { params }: RouteContext) {
     return NextResponse.json({ error: "Invalid JSON body." }, { status: 400 });
   }
 
-  const parsed = companyInputSchema.safeParse(body);
+  const parsed = communityInputSchema.safeParse(body);
   if (!parsed.success) {
     return NextResponse.json(
       { error: parsed.error.issues[0]?.message ?? "Invalid request." },
@@ -43,7 +42,7 @@ export async function PATCH(request: Request, { params }: RouteContext) {
     );
   }
 
-  const duplicate = await prisma.company.findFirst({
+  const duplicate = await prisma.community.findFirst({
     where: {
       userId: session.user.id,
       id: { not: id },
@@ -54,22 +53,15 @@ export async function PATCH(request: Request, { params }: RouteContext) {
     return NextResponse.json({ error: "duplicate" }, { status: 409 });
   }
 
-  const company = await prisma.company.update({
+  const community = await prisma.community.update({
     where: { id },
     data: {
       name: parsed.data.name,
-      industry: parsed.data.industry || null,
       description: parsed.data.description || null,
     },
   });
 
-  // Keep contacts' cached companyName in sync with the rename.
-  await prisma.contact.updateMany({
-    where: { companyId: id },
-    data: { companyName: company.name },
-  });
-
-  return NextResponse.json({ company });
+  return NextResponse.json({ community });
 }
 
 export async function DELETE(request: Request, { params }: RouteContext) {
@@ -82,12 +74,12 @@ export async function DELETE(request: Request, { params }: RouteContext) {
   }
 
   const { id } = await params;
-  const existing = await prisma.company.findFirst({ where: { id, userId: session.user.id } });
+  const existing = await prisma.community.findFirst({ where: { id, userId: session.user.id } });
   if (!existing) {
-    return NextResponse.json({ error: "Company not found." }, { status: 404 });
+    return NextResponse.json({ error: "Community not found." }, { status: 404 });
   }
 
-  await prisma.company.delete({ where: { id } });
+  await prisma.community.delete({ where: { id } });
 
   return NextResponse.json({ success: true });
 }

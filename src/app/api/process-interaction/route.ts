@@ -4,6 +4,7 @@ import { z } from "zod";
 import { auth } from "@/lib/auth";
 import { InteractionType } from "@/generated/prisma/enums";
 import { ContactNotFoundError, processInteraction } from "@/lib/services/process-interaction";
+import { checkRateLimit, getClientIp, rateLimitedResponse } from "@/lib/rate-limit";
 
 const RequestSchema = z.object({
   rawText: z.string().trim().min(1, "Текст не може бути порожнім.").max(8000),
@@ -12,6 +13,9 @@ const RequestSchema = z.object({
 });
 
 export async function POST(request: Request) {
+  const rl = checkRateLimit("aiProcessInteraction", getClientIp(request.headers));
+  if (rl.limited) return rateLimitedResponse(rl.retryAfterSeconds);
+
   const session = await auth();
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

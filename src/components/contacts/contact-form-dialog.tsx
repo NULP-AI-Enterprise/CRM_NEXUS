@@ -25,7 +25,8 @@ export interface ContactFormDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   companies: Array<{ id: string; name: string }>;
-  contact?: ContactModel | null;
+  communities?: Array<{ id: string; name: string }>;
+  contact?: (ContactModel & { communities?: Array<{ id: string }> }) | null;
   onSuccess?: (contact: ContactModel) => void;
 }
 
@@ -35,6 +36,7 @@ export function ContactFormDialog({
   open,
   onOpenChange,
   companies,
+  communities = [],
   contact,
   onSuccess,
 }: ContactFormDialogProps) {
@@ -51,6 +53,7 @@ export function ContactFormDialog({
   const [needs, setNeeds] = useState("");
   const [valuePotential, setValuePotential] = useState("");
   const [fullSummary, setFullSummary] = useState("");
+  const [communityIds, setCommunityIds] = useState<string[]>([]);
   const [isPending, startTransition] = useTransition();
 
   // Reset the form from `contact` the moment the dialog transitions from
@@ -68,9 +71,14 @@ export function ContactFormDialog({
     setNeeds(contact?.needs ?? "");
     setValuePotential(contact?.valuePotential ?? "");
     setFullSummary(contact?.fullSummary ?? "");
+    setCommunityIds(contact?.communities?.map((c) => c.id) ?? []);
   } else if (!open && wasOpen) {
     setWasOpen(false);
   }
+
+  const toggleCommunity = (id: string) => {
+    setCommunityIds((prev) => (prev.includes(id) ? prev.filter((c) => c !== id) : [...prev, id]));
+  };
 
   const handleSubmit = () => {
     if (!fullName.trim()) {
@@ -88,6 +96,7 @@ export function ContactFormDialog({
       needs: needs.trim() || null,
       valuePotential: valuePotential.trim() || null,
       fullSummary: fullSummary.trim() || null,
+      communityIds,
     };
 
     startTransition(async () => {
@@ -136,7 +145,7 @@ export function ContactFormDialog({
                 value={fullName}
                 onChange={(e) => setFullName(e.target.value)}
                 placeholder={t("contact.form.fullNamePlaceholder")}
-                className="bg-zinc-950 border-zinc-800 text-xs h-8 rounded-md"
+                className="bg-zinc-950 border-zinc-800 text-base md:text-xs h-8 rounded-md"
                 disabled={isPending}
                 autoFocus
               />
@@ -147,7 +156,7 @@ export function ContactFormDialog({
                 value={role}
                 onChange={(e) => setRole(e.target.value)}
                 placeholder={t("contact.form.rolePlaceholder")}
-                className="bg-zinc-950 border-zinc-800 text-xs h-8 rounded-md"
+                className="bg-zinc-950 border-zinc-800 text-base md:text-xs h-8 rounded-md"
                 disabled={isPending}
               />
             </div>
@@ -187,6 +196,31 @@ export function ContactFormDialog({
             </div>
           </div>
 
+          <div className="flex flex-col gap-1.5">
+            <Label className="text-xs font-medium text-zinc-300">{t("contact.form.communities")}</Label>
+            {communities.length === 0 ? (
+              <p className="text-[11px] text-zinc-500">{t("contact.form.communitiesEmpty")}</p>
+            ) : (
+              <div className="flex flex-wrap gap-1">
+                {communities.map((c) => (
+                  <button
+                    key={c.id}
+                    type="button"
+                    onClick={() => toggleCommunity(c.id)}
+                    disabled={isPending}
+                    className={`rounded px-2 py-0.5 text-xs transition-colors ${
+                      communityIds.includes(c.id)
+                        ? "bg-zinc-100 text-zinc-950 font-medium"
+                        : "bg-zinc-950 border border-zinc-800 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800"
+                    }`}
+                  >
+                    {c.name}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
           <div className="flex flex-col gap-1">
             <div className="flex items-center justify-between">
               <Label className="text-xs font-medium text-zinc-300">{t("contact.form.usefulnessScore")}</Label>
@@ -209,7 +243,7 @@ export function ContactFormDialog({
               <Textarea
                 value={temperament}
                 onChange={(e) => setTemperament(e.target.value)}
-                className="min-h-14 resize-none bg-zinc-950 border-zinc-800 text-xs rounded-md"
+                className="min-h-14 resize-none bg-zinc-950 border-zinc-800 text-base md:text-xs rounded-md"
                 disabled={isPending}
               />
             </div>
@@ -218,7 +252,7 @@ export function ContactFormDialog({
               <Textarea
                 value={needs}
                 onChange={(e) => setNeeds(e.target.value)}
-                className="min-h-14 resize-none bg-zinc-950 border-zinc-800 text-xs rounded-md"
+                className="min-h-14 resize-none bg-zinc-950 border-zinc-800 text-base md:text-xs rounded-md"
                 disabled={isPending}
               />
             </div>
@@ -229,7 +263,7 @@ export function ContactFormDialog({
             <Textarea
               value={valuePotential}
               onChange={(e) => setValuePotential(e.target.value)}
-              className="min-h-14 resize-none bg-zinc-950 border-zinc-800 text-xs rounded-md"
+              className="min-h-14 resize-none bg-zinc-950 border-zinc-800 text-base md:text-xs rounded-md"
               disabled={isPending}
             />
           </div>
@@ -239,7 +273,7 @@ export function ContactFormDialog({
             <Textarea
               value={fullSummary}
               onChange={(e) => setFullSummary(e.target.value)}
-              className="min-h-16 resize-none bg-zinc-950 border-zinc-800 text-xs rounded-md"
+              className="min-h-16 resize-none bg-zinc-950 border-zinc-800 text-base md:text-xs rounded-md"
               disabled={isPending}
             />
           </div>

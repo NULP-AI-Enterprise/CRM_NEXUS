@@ -23,7 +23,9 @@ model User {
   companies           Company[]
   contacts            Contact[]
   connections         ContactConnection[]
+  communities         Community[]
   verificationTokens  EmailVerificationToken[]
+  passwordResetTokens PasswordResetToken[]
 }
 
 /// Single-use token emailed to a user to confirm ownership of their address.
@@ -36,6 +38,37 @@ model EmailVerificationToken {
   userId String
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  @@index([userId])
+}
+
+/// Single-use token emailed to a user to reset a forgotten password.
+model PasswordResetToken {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+/// A looser group affiliation a contact belongs to (meetup, alumni network,
+/// professional community) — distinct from Company, which is 1 contact : 1 employer.
+model Community {
+  id          String   @id @default(cuid())
+  name        String
+  description String?  @db.Text
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  contacts Contact[] @relation("ContactCommunities")
+
+  @@unique([userId, name])
   @@index([userId])
 }
 
@@ -93,6 +126,7 @@ model Contact {
   interactions        Interaction[]
   outgoingConnections ContactConnection[] @relation("OutgoingConnections")
   incomingConnections ContactConnection[] @relation("IncomingConnections")
+  communities         Community[]         @relation("ContactCommunities")
 
   @@index([userId])
   @@index([companyId])
@@ -133,6 +167,9 @@ model Interaction {
   id        String           @id @default(cuid())
   type      InteractionType  @default(NOTE)
   rawText   String           @db.Text
+  /// Next step / commitment extracted from rawText, if this note mentions one
+  /// (e.g. "Wednesday: talk to the academy owner"). Null when none is found.
+  followUp  String?          @db.Text
   createdAt DateTime         @default(now())
 
   contactId String

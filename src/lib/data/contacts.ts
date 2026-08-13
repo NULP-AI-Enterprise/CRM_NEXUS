@@ -12,6 +12,10 @@ export async function getContactDetail(userId: string, contactId: string) {
           },
         },
       },
+      communities: {
+        select: { id: true, name: true },
+        orderBy: { name: "asc" },
+      },
       interactions: {
         orderBy: { createdAt: "desc" },
       },

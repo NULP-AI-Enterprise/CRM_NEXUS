@@ -6,8 +6,10 @@ import { ArrowLeft, History, Plus } from "lucide-react";
 import { auth } from "@/lib/auth";
 import { getContactDetail } from "@/lib/data/contacts";
 import { listCompanies } from "@/lib/data/companies";
+import { listCommunities } from "@/lib/data/communities";
 import { getServerTranslation } from "@/lib/i18n/server";
-import { ContactProfileCard } from "@/components/contacts/contact-profile-card";
+import { ContactHeader } from "@/components/contacts/contact-header";
+import { ContactInsightsPanel } from "@/components/contacts/contact-insights-panel";
 import { AddNoteForm } from "@/components/contacts/add-note-form";
 import { InteractionTimeline } from "@/components/contacts/interaction-timeline";
 import { MiniNetworkGraph } from "@/components/graph/mini-network-graph";
@@ -33,9 +35,10 @@ export default async function ContactPage({ params }: ContactPageProps) {
     redirect("/login");
   }
 
-  const [contact, companies, { t }] = await Promise.all([
+  const [contact, companies, communities, { t }] = await Promise.all([
     getContactDetail(session.user.id, id),
     listCompanies(session.user.id),
+    listCommunities(session.user.id),
     getServerTranslation(),
   ]);
   if (!contact) {
@@ -84,10 +87,31 @@ export default async function ContactPage({ params }: ContactPageProps) {
         </Link>
       </div>
 
-      {/* Main Profile Info */}
-      <ContactProfileCard contact={contact} companies={companies} />
+      {/* Identity header — who this contact is, always visible first */}
+      <ContactHeader contact={contact} companies={companies} communities={communities} />
 
-      {/* Mini Network Graph Section */}
+      {/* Add Note + Interaction Chain — the primary "what's happening with this
+          person" view, placed immediately after identity so it's reachable
+          without scrolling past secondary content on phones. */}
+      <div className="rounded-xl border border-white/[0.08] bg-zinc-900/30 p-4 space-y-2.5">
+        <div className="flex items-center gap-1.5 text-xs font-semibold text-white uppercase tracking-wider">
+          <Plus className="size-3 text-zinc-400" />
+          {t("addNote.newNoteTitle")}
+        </div>
+        <AddNoteForm contactId={contact.id} />
+      </div>
+
+      <div className="rounded-xl border border-white/[0.08] bg-zinc-900/30 p-4 space-y-3">
+        <div className="flex items-center gap-1.5 text-xs font-semibold text-white uppercase tracking-wider">
+          <History className="size-3.5 text-zinc-400" />
+          {t("timeline.title")}
+        </div>
+        <InteractionTimeline interactions={contact.interactions} />
+      </div>
+
+      {/* Secondary: profile insights, connections, and the mini graph */}
+      <ContactInsightsPanel contact={contact} />
+
       <div className="grid gap-5 lg:grid-cols-2">
         <MiniNetworkGraph
           currentContact={{
@@ -102,24 +126,6 @@ export default async function ContactPage({ params }: ContactPageProps) {
           colleagues={colleagues}
           otherAvailableContacts={contact.otherContacts}
         />
-
-        {/* Add Note Form */}
-        <div className="rounded-xl border border-white/[0.08] bg-zinc-900/30 p-4 space-y-2.5">
-          <div className="flex items-center gap-1.5 text-xs font-semibold text-white uppercase tracking-wider">
-            <Plus className="size-3 text-zinc-400" />
-            {t("addNote.newNoteTitle")}
-          </div>
-          <AddNoteForm contactId={contact.id} />
-        </div>
-      </div>
-
-      {/* Interaction Timeline */}
-      <div className="rounded-xl border border-white/[0.08] bg-zinc-900/30 p-4 space-y-3">
-        <div className="flex items-center gap-1.5 text-xs font-semibold text-white uppercase tracking-wider">
-          <History className="size-3.5 text-zinc-400" />
-          {t("timeline.title")}
-        </div>
-        <InteractionTimeline interactions={contact.interactions} />
       </div>
     </div>
   );

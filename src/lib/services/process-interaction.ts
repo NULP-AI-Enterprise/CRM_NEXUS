@@ -129,6 +129,7 @@ export async function processInteraction(params: {
         contactId: contactId2,
         type,
         rawText,
+        followUp: extraction.followUp,
       },
     });
 

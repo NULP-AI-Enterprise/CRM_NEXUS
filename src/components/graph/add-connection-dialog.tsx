@@ -146,7 +146,7 @@ export function AddConnectionDialog({
               value={relationship}
               onChange={(e) => setRelationship(e.target.value)}
               placeholder={t("connection.relationshipPlaceholder")}
-              className="mt-1 bg-zinc-950 border-zinc-800 text-xs h-7 rounded-md"
+              className="mt-1 bg-zinc-950 border-zinc-800 text-base md:text-xs h-7 rounded-md"
               disabled={isPending}
             />
           </div>
@@ -183,7 +183,7 @@ export function AddConnectionDialog({
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               placeholder={t("connection.notesPlaceholder")}
-              className="min-h-14 resize-none bg-zinc-950 border-zinc-800 text-xs rounded-md"
+              className="min-h-14 resize-none bg-zinc-950 border-zinc-800 text-base md:text-xs rounded-md"
               disabled={isPending}
             />
           </div>

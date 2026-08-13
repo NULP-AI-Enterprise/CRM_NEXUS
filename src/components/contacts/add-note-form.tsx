@@ -54,7 +54,7 @@ export function AddNoteForm({ contactId }: { contactId: string }) {
           value={text}
           onChange={(e) => setText(e.target.value)}
           placeholder={t("addNote.placeholder")}
-          className="min-h-20 flex-1 resize-none bg-zinc-950/60 border-white/[0.08] text-xs text-zinc-100 placeholder:text-zinc-500 rounded-lg focus:border-zinc-500"
+          className="min-h-20 flex-1 resize-none bg-zinc-950/60 border-white/[0.08] text-base md:text-xs text-zinc-100 placeholder:text-zinc-500 rounded-lg focus:border-zinc-500"
           disabled={isPending}
         />
         <div className="flex flex-col justify-start">

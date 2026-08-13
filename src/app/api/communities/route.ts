@@ -5,9 +5,8 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { checkRateLimit, getClientIp, rateLimitedResponse } from "@/lib/rate-limit";
 
-const companyInputSchema = z.object({
+const communityInputSchema = z.object({
   name: z.string().trim().min(1).max(200),
-  industry: z.string().trim().max(200).nullish(),
   description: z.string().trim().max(2000).nullish(),
 });
 
@@ -27,7 +26,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Invalid JSON body." }, { status: 400 });
   }
 
-  const parsed = companyInputSchema.safeParse(body);
+  const parsed = communityInputSchema.safeParse(body);
   if (!parsed.success) {
     return NextResponse.json(
       { error: parsed.error.issues[0]?.message ?? "Invalid request." },
@@ -35,21 +34,20 @@ export async function POST(request: Request) {
     );
   }
 
-  const existing = await prisma.company.findFirst({
+  const existing = await prisma.community.findFirst({
     where: { userId: session.user.id, name: { equals: parsed.data.name, mode: "insensitive" } },
   });
   if (existing) {
     return NextResponse.json({ error: "duplicate" }, { status: 409 });
   }
 
-  const company = await prisma.company.create({
+  const community = await prisma.community.create({
     data: {
       userId: session.user.id,
       name: parsed.data.name,
-      industry: parsed.data.industry || null,
       description: parsed.data.description || null,
     },
   });
 
-  return NextResponse.json({ company }, { status: 201 });
+  return NextResponse.json({ community }, { status: 201 });
 }

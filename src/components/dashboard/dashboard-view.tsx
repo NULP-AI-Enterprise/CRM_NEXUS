@@ -5,6 +5,7 @@ import {
   Share2,
   Building2,
   Users,
+  UsersRound,
   Star,
   Network,
   Plus,
@@ -13,20 +14,24 @@ import {
 import { QuickAddCard } from "@/components/quick-add/quick-add-card";
 import { NetworkGraph } from "@/components/graph/network-graph";
 import { CompanyAccordion } from "@/components/dashboard/company-accordion";
+import { CommunityAccordion } from "@/components/dashboard/community-accordion";
 import { ContactCard } from "@/components/dashboard/contact-card";
 import { ContactFormDialog } from "@/components/contacts/contact-form-dialog";
 import { CompanyFormDialog } from "@/components/dashboard/company-form-dialog";
+import { CommunityFormDialog } from "@/components/dashboard/community-form-dialog";
 import { Button } from "@/components/ui/button";
 import { useTranslation } from "@/lib/i18n/context";
 import type { FullGraphData } from "@/lib/data/graph";
-import type { CompanyModel, ContactModel } from "@/generated/prisma/models";
+import type { CompanyModel, CommunityModel, ContactModel } from "@/generated/prisma/models";
 
 type CompanyWithContacts = CompanyModel & { contacts: ContactModel[] };
+type CommunityWithContacts = CommunityModel & { contacts: ContactModel[] };
 
 interface DashboardViewProps {
   graphData: FullGraphData;
   companies: CompanyWithContacts[];
   unassignedContacts: ContactModel[];
+  communities: CommunityWithContacts[];
   allContacts: ContactModel[];
 }
 
@@ -34,14 +39,17 @@ export function DashboardView({
   graphData,
   companies,
   unassignedContacts,
+  communities,
   allContacts,
 }: DashboardViewProps) {
   const { t } = useTranslation();
-  const [activeTab, setActiveTab] = useState<"graph" | "companies" | "contacts">("graph");
+  const [activeTab, setActiveTab] = useState<"graph" | "companies" | "communities" | "contacts">("graph");
   const [isNewContactOpen, setIsNewContactOpen] = useState(false);
   const [isNewCompanyOpen, setIsNewCompanyOpen] = useState(false);
+  const [isNewCommunityOpen, setIsNewCommunityOpen] = useState(false);
 
   const companyOptions = companies.map((c) => ({ id: c.id, name: c.name }));
+  const communityOptions = communities.map((c) => ({ id: c.id, name: c.name }));
 
   // Calculate average usefulness score
   const scoredContacts = allContacts.filter((c) => c.usefulnessScore != null);
@@ -146,6 +154,19 @@ export function DashboardView({
           </button>
 
           <button
+            onClick={() => setActiveTab("communities")}
+            className={`flex items-center gap-2 rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
+              activeTab === "communities"
+                ? "bg-zinc-800 text-white shadow-sm"
+                : "text-zinc-400 hover:text-zinc-200"
+            }`}
+          >
+            <UsersRound className="size-3.5" />
+            <span>{t("dashboard.tab.communities")}</span>
+            <span className="text-[11px] text-zinc-500 font-mono">({communities.length})</span>
+          </button>
+
+          <button
             onClick={() => setActiveTab("contacts")}
             className={`flex items-center gap-2 rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
               activeTab === "contacts"
@@ -167,6 +188,16 @@ export function DashboardView({
           >
             <Plus className="size-3" />
             {t("dashboard.newCompany")}
+          </Button>
+        )}
+        {activeTab === "communities" && (
+          <Button
+            size="sm"
+            onClick={() => setIsNewCommunityOpen(true)}
+            className="h-7 px-3 text-xs bg-zinc-800 hover:bg-zinc-700 text-zinc-100 gap-1.5 rounded-md"
+          >
+            <Plus className="size-3" />
+            {t("dashboard.newCommunity")}
           </Button>
         )}
         {activeTab === "contacts" && (
@@ -196,6 +227,9 @@ export function DashboardView({
         />
       )}
 
+      {/* TAB CONTENT: Communities */}
+      {activeTab === "communities" && <CommunityAccordion communities={communities} />}
+
       {/* TAB CONTENT: Contacts Grid */}
       {activeTab === "contacts" && (
         <div className="space-y-3">
@@ -211,8 +245,10 @@ export function DashboardView({
         open={isNewContactOpen}
         onOpenChange={setIsNewContactOpen}
         companies={companyOptions}
+        communities={communityOptions}
       />
       <CompanyFormDialog open={isNewCompanyOpen} onOpenChange={setIsNewCompanyOpen} />
+      <CommunityFormDialog open={isNewCommunityOpen} onOpenChange={setIsNewCommunityOpen} />
     </div>
   );
 }

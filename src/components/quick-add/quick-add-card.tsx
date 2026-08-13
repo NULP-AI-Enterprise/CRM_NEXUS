@@ -64,7 +64,7 @@ export function QuickAddCard() {
             value={text}
             onChange={(e) => setText(e.target.value)}
             placeholder={t("quickAdd.placeholder")}
-            className="min-h-18 flex-1 resize-none rounded-lg border-white/[0.08] bg-zinc-950/60 p-3 text-xs text-zinc-100 placeholder:text-zinc-500 focus:border-zinc-500 focus:ring-0"
+            className="min-h-18 flex-1 resize-none rounded-lg border-white/[0.08] bg-zinc-950/60 p-3 text-base md:text-xs text-zinc-100 placeholder:text-zinc-500 focus:border-zinc-500 focus:ring-0"
             disabled={isPending}
           />
           <div className="flex flex-col justify-start">

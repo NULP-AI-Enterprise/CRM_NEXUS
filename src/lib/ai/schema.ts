@@ -52,6 +52,12 @@ export const ContactExtractionSchema = z.object({
     .describe(
       "A thorough, well-structured summary of who this person is, combining all prior context with this new note: background, relationship history, key facts, and current state.",
     ),
+  followUp: z
+    .string()
+    .nullable()
+    .describe(
+      "A concrete next step, plan, or commitment mentioned in THIS note for the future (e.g. 'Wednesday: will talk to the academy owner'). Include the timeframe if one was mentioned. Null if this note doesn't mention any future action or plan — do not invent one.",
+    ),
 });
 
 export type ContactExtraction = z.infer<typeof ContactExtractionSchema>;

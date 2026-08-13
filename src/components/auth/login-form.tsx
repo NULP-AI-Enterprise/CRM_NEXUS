@@ -42,7 +42,12 @@ export function LoginForm() {
             <Input id="email" name="email" type="email" placeholder="you@example.com" required autoFocus />
           </div>
           <div className="flex flex-col gap-2">
-            <Label htmlFor="password">{t("auth.login.password")}</Label>
+            <div className="flex items-center justify-between">
+              <Label htmlFor="password">{t("auth.login.password")}</Label>
+              <Link href="/forgot-password" className="text-xs text-muted-foreground underline hover:text-foreground">
+                {t("auth.login.forgotPasswordLink")}
+              </Link>
+            </div>
             <Input id="password" name="password" type="password" required />
           </div>
           {state?.error && (
@@ -54,10 +59,16 @@ export function LoginForm() {
             </div>
           )}
         </CardContent>
-        <CardFooter className="mt-4">
+        <CardFooter className="mt-4 flex flex-col gap-3">
           <SubmitButton className="w-full" pendingText={t("auth.login.submitPending")}>
             {t("auth.login.submit")}
           </SubmitButton>
+          <Link
+            href="/resend-verification"
+            className="text-center text-xs text-muted-foreground underline hover:text-foreground"
+          >
+            {t("auth.login.resendVerificationEntryLink")}
+          </Link>
         </CardFooter>
       </form>
     </Card>

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { checkRateLimit, getClientIp, rateLimitedResponse } from "@/lib/rate-limit";
 
 const createConnectionSchema = z.object({
   fromContactId: z.string().min(1),
@@ -18,6 +19,9 @@ const deleteConnectionSchema = z.object({
 });
 
 export async function POST(req: Request) {
+  const rl = checkRateLimit("apiGeneral", getClientIp(req.headers));
+  if (rl.limited) return rateLimitedResponse(rl.retryAfterSeconds);
+
   const session = await auth();
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -81,6 +85,9 @@ export async function POST(req: Request) {
 }
 
 export async function DELETE(req: Request) {
+  const rl = checkRateLimit("apiGeneral", getClientIp(req.headers));
+  if (rl.limited) return rateLimitedResponse(rl.retryAfterSeconds);
+
   const session = await auth();
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

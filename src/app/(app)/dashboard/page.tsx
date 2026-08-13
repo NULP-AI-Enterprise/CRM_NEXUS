@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 
 import { auth } from "@/lib/auth";
 import { getCompaniesWithContacts } from "@/lib/data/companies";
+import { getCommunitiesWithContacts } from "@/lib/data/communities";
 import { getGraphData } from "@/lib/data/graph";
 import { listContacts } from "@/lib/data/contacts";
 import { DashboardView } from "@/components/dashboard/dashboard-view";
@@ -17,9 +18,10 @@ export default async function DashboardPage() {
     redirect("/login");
   }
 
-  const [graphData, { companies, unassignedContacts }, allContacts] = await Promise.all([
+  const [graphData, { companies, unassignedContacts }, communities, allContacts] = await Promise.all([
     getGraphData(session.user.id),
     getCompaniesWithContacts(session.user.id),
+    getCommunitiesWithContacts(session.user.id),
     listContacts(session.user.id),
   ]);
 
@@ -28,6 +30,7 @@ export default async function DashboardPage() {
       graphData={graphData}
       companies={companies}
       unassignedContacts={unassignedContacts}
+      communities={communities}
       allContacts={allContacts}
     />
   );

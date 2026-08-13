@@ -4,6 +4,7 @@ import { z } from "zod";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { ContactCategory } from "@/generated/prisma/enums";
+import { checkRateLimit, getClientIp, rateLimitedResponse } from "@/lib/rate-limit";
 
 const contactInputSchema = z.object({
   fullName: z.string().trim().min(1).max(200),
@@ -15,11 +16,15 @@ const contactInputSchema = z.object({
   needs: z.string().trim().max(2000).nullish(),
   valuePotential: z.string().trim().max(2000).nullish(),
   fullSummary: z.string().trim().max(5000).nullish(),
+  communityIds: z.array(z.string().min(1)).optional(),
 });
 
 type RouteContext = { params: Promise<{ id: string }> };
 
 export async function PATCH(request: Request, { params }: RouteContext) {
+  const rl = checkRateLimit("apiGeneral", getClientIp(request.headers));
+  if (rl.limited) return rateLimitedResponse(rl.retryAfterSeconds);
+
   const session = await auth();
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -46,7 +51,7 @@ export async function PATCH(request: Request, { params }: RouteContext) {
     );
   }
 
-  const { companyId, role, temperament, needs, valuePotential, fullSummary, ...rest } = parsed.data;
+  const { companyId, role, temperament, needs, valuePotential, fullSummary, communityIds, ...rest } = parsed.data;
 
   let companyName: string | null = null;
   if (companyId) {
@@ -57,6 +62,21 @@ export async function PATCH(request: Request, { params }: RouteContext) {
       return NextResponse.json({ error: "Company not found." }, { status: 404 });
     }
     companyName = company.name;
+  }
+
+  let communitiesUpdate:
+    | { set: Array<{ id: string }> }
+    | undefined;
+  if (communityIds !== undefined) {
+    let validCommunityIds: string[] = [];
+    if (communityIds.length > 0) {
+      const owned = await prisma.community.findMany({
+        where: { id: { in: communityIds }, userId: session.user.id },
+        select: { id: true },
+      });
+      validCommunityIds = owned.map((c) => c.id);
+    }
+    communitiesUpdate = { set: validCommunityIds.map((cId) => ({ id: cId })) };
   }
 
   const contact = await prisma.contact.update({
@@ -72,14 +92,18 @@ export async function PATCH(request: Request, { params }: RouteContext) {
       needs: needs || null,
       valuePotential: valuePotential || null,
       fullSummary: fullSummary || null,
+      communities: communitiesUpdate,
     },
-    include: { company: true },
+    include: { company: true, communities: true },
   });
 
   return NextResponse.json({ contact });
 }
 
-export async function DELETE(_request: Request, { params }: RouteContext) {
+export async function DELETE(request: Request, { params }: RouteContext) {
+  const rl = checkRateLimit("apiGeneral", getClientIp(request.headers));
+  if (rl.limited) return rateLimitedResponse(rl.retryAfterSeconds);
+
   const session = await auth();
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Building2, Loader2 } from "lucide-react";
+import { UsersRound, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
 import {
@@ -18,64 +18,61 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useTranslation } from "@/lib/i18n/context";
-import type { CompanyModel } from "@/generated/prisma/models";
+import type { CommunityModel } from "@/generated/prisma/models";
 
-export interface CompanyFormDialogProps {
+export interface CommunityFormDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  company?: CompanyModel | null;
-  onSuccess?: (company: CompanyModel) => void;
+  community?: CommunityModel | null;
+  onSuccess?: (community: CommunityModel) => void;
 }
 
-export function CompanyFormDialog({ open, onOpenChange, company, onSuccess }: CompanyFormDialogProps) {
+export function CommunityFormDialog({ open, onOpenChange, community, onSuccess }: CommunityFormDialogProps) {
   const { t } = useTranslation();
   const router = useRouter();
-  const isEditMode = Boolean(company);
+  const isEditMode = Boolean(community);
 
   const [name, setName] = useState("");
-  const [industry, setIndustry] = useState("");
   const [description, setDescription] = useState("");
   const [isPending, startTransition] = useTransition();
 
-  // Reset the form from `company` the moment the dialog transitions from
+  // Reset the form from `community` the moment the dialog transitions from
   // closed to open, adjusting state during render (React's recommended
   // alternative to a setState-in-effect) rather than in a useEffect.
   const [wasOpen, setWasOpen] = useState(false);
   if (open && !wasOpen) {
     setWasOpen(true);
-    setName(company?.name ?? "");
-    setIndustry(company?.industry ?? "");
-    setDescription(company?.description ?? "");
+    setName(community?.name ?? "");
+    setDescription(community?.description ?? "");
   } else if (!open && wasOpen) {
     setWasOpen(false);
   }
 
   const handleSubmit = () => {
     if (!name.trim()) {
-      toast.error(t("company.form.nameRequired"));
+      toast.error(t("community.form.nameRequired"));
       return;
     }
 
     const payload = {
       name: name.trim(),
-      industry: industry.trim() || null,
       description: description.trim() || null,
     };
 
     startTransition(async () => {
       try {
-        const res = await fetch(isEditMode ? `/api/companies/${company!.id}` : "/api/companies", {
+        const res = await fetch(isEditMode ? `/api/communities/${community!.id}` : "/api/communities", {
           method: isEditMode ? "PATCH" : "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
         });
         const data = await res.json();
         if (!res.ok) {
-          throw new Error(data?.error === "duplicate" ? t("company.form.duplicateName") : (data?.error ?? t("common.unknownError")));
+          throw new Error(data?.error === "duplicate" ? t("community.form.duplicateName") : (data?.error ?? t("common.unknownError")));
         }
-        toast.success(isEditMode ? t("company.form.editSuccess") : t("company.form.createSuccess"));
+        toast.success(isEditMode ? t("community.form.editSuccess") : t("community.form.createSuccess"));
         onOpenChange(false);
-        onSuccess?.(data.company);
+        onSuccess?.(data.community);
         router.refresh();
       } catch (err) {
         toast.error(err instanceof Error ? err.message : t("common.unknownError"));
@@ -89,45 +86,35 @@ export function CompanyFormDialog({ open, onOpenChange, company, onSuccess }: Co
         <DialogHeader>
           <div className="flex items-center gap-2 text-zinc-300">
             <div className="flex size-7 items-center justify-center rounded-md bg-zinc-800 border border-white/[0.06]">
-              <Building2 className="size-3.5" />
+              <UsersRound className="size-3.5" />
             </div>
             <DialogTitle className="text-sm font-semibold text-white">
-              {isEditMode ? t("company.form.editTitle") : t("company.form.createTitle")}
+              {isEditMode ? t("community.form.editTitle") : t("community.form.createTitle")}
             </DialogTitle>
           </div>
           <DialogDescription className="sr-only">
-            {isEditMode ? t("company.form.editTitle") : t("company.form.createTitle")}
+            {isEditMode ? t("community.form.editTitle") : t("community.form.createTitle")}
           </DialogDescription>
         </DialogHeader>
 
         <div className="flex flex-col gap-3.5 py-1 text-xs">
           <div className="flex flex-col gap-1">
-            <Label className="text-xs font-medium text-zinc-300">{t("company.form.name")}</Label>
+            <Label className="text-xs font-medium text-zinc-300">{t("community.form.name")}</Label>
             <Input
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder={t("company.form.namePlaceholder")}
+              placeholder={t("community.form.namePlaceholder")}
               className="bg-zinc-950 border-zinc-800 text-base md:text-xs h-8 rounded-md"
               disabled={isPending}
               autoFocus
             />
           </div>
           <div className="flex flex-col gap-1">
-            <Label className="text-xs font-medium text-zinc-300">{t("company.form.industry")}</Label>
-            <Input
-              value={industry}
-              onChange={(e) => setIndustry(e.target.value)}
-              placeholder={t("company.form.industryPlaceholder")}
-              className="bg-zinc-950 border-zinc-800 text-base md:text-xs h-8 rounded-md"
-              disabled={isPending}
-            />
-          </div>
-          <div className="flex flex-col gap-1">
-            <Label className="text-xs font-medium text-zinc-300">{t("company.form.description")}</Label>
+            <Label className="text-xs font-medium text-zinc-300">{t("community.form.description")}</Label>
             <Textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder={t("company.form.descriptionPlaceholder")}
+              placeholder={t("community.form.descriptionPlaceholder")}
               className="min-h-16 resize-none bg-zinc-950 border-zinc-800 text-base md:text-xs rounded-md"
               disabled={isPending}
             />

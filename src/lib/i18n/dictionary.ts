@@ -27,6 +27,7 @@ export const dictionary = {
   "common.optional": { en: "Optional", uk: "Необов'язково" },
   "common.confirmDeleteTitle": { en: "Are you sure?", uk: "Ви впевнені?" },
   "common.unknownError": { en: "Something went wrong. Please try again.", uk: "Щось пішло не так. Спробуйте ще раз." },
+  "common.rateLimited": { en: "Too many requests. Please try again in a bit.", uk: "Забагато запитів. Спробуйте ще раз трохи пізніше." },
 
   // ---- nav / app shell ----
   "nav.brand": { en: "Nexus", uk: "Nexus" },
@@ -48,6 +49,11 @@ export const dictionary = {
   },
   "auth.login.resendLink": { en: "Resend verification email", uk: "Надіслати лист повторно" },
   "auth.login.resendSent": { en: "Verification email sent — check your inbox.", uk: "Лист надіслано — перевірте пошту." },
+  "auth.login.forgotPasswordLink": { en: "Forgot password?", uk: "Забули пароль?" },
+  "auth.login.resendVerificationEntryLink": {
+    en: "Didn't get a confirmation email? Resend it",
+    uk: "Не отримали лист із підтвердженням? Надіслати ще раз",
+  },
 
   // ---- auth: register ----
   "auth.register.title": { en: "Create account", uk: "Реєстрація" },
@@ -81,6 +87,60 @@ export const dictionary = {
     uk: "Це посилання недійсне або застаріло. Запросіть нове зі сторінки входу.",
   },
 
+  // ---- auth: standalone resend verification ----
+  "auth.resendVerification.title": { en: "Resend confirmation email", uk: "Повторне надсилання листа" },
+  "auth.resendVerification.description": {
+    en: "Enter your email and we'll resend the confirmation link, if your account needs it.",
+    uk: "Введіть email, і ми повторно надішлемо лист із підтвердженням, якщо це потрібно.",
+  },
+  "auth.resendVerification.submit": { en: "Resend link", uk: "Надіслати посилання" },
+  "auth.resendVerification.submitPending": { en: "Sending...", uk: "Надсилання..." },
+  "auth.resendVerification.checkInboxTitle": { en: "Check your inbox", uk: "Перевірте пошту" },
+  "auth.resendVerification.checkInboxBody": {
+    en: "If your account exists and still needs verifying, we've sent a fresh confirmation link.",
+    uk: "Якщо ваш акаунт існує і ще не підтверджений, ми надіслали новий лист із підтвердженням.",
+  },
+
+  // ---- auth: forgot password ----
+  "auth.forgotPassword.title": { en: "Reset your password", uk: "Відновлення пароля" },
+  "auth.forgotPassword.description": {
+    en: "Enter your email and we'll send you a link to reset your password.",
+    uk: "Введіть email, і ми надішлемо посилання для відновлення пароля.",
+  },
+  "auth.forgotPassword.emailInvalid": { en: "Enter a valid email address.", uk: "Введіть правильну електронну адресу." },
+  "auth.forgotPassword.submit": { en: "Send reset link", uk: "Надіслати посилання" },
+  "auth.forgotPassword.submitPending": { en: "Sending...", uk: "Надсилання..." },
+  "auth.forgotPassword.checkInboxTitle": { en: "Check your inbox", uk: "Перевірте пошту" },
+  "auth.forgotPassword.checkInboxBody": {
+    en: "If an account with that email exists, we've sent a link to reset your password. The link is valid for 1 hour.",
+    uk: "Якщо акаунт із таким email існує, ми надіслали посилання для відновлення пароля. Воно дійсне 1 годину.",
+  },
+
+  // ---- auth: reset password ----
+  "auth.resetPassword.title": { en: "Set a new password", uk: "Новий пароль" },
+  "auth.resetPassword.description": { en: "Choose a new password for your account.", uk: "Оберіть новий пароль для вашого акаунта." },
+  "auth.resetPassword.newPassword": { en: "New password", uk: "Новий пароль" },
+  "auth.resetPassword.confirmPassword": { en: "Confirm password", uk: "Підтвердіть пароль" },
+  "auth.resetPassword.passwordMismatch": { en: "Passwords don't match.", uk: "Паролі не збігаються." },
+  "auth.resetPassword.passwordTooShort": { en: "Password must be at least 8 characters.", uk: "Пароль має містити щонайменше 8 символів." },
+  "auth.resetPassword.submit": { en: "Update password", uk: "Оновити пароль" },
+  "auth.resetPassword.submitPending": { en: "Updating...", uk: "Оновлення..." },
+  "auth.resetPassword.successTitle": { en: "Password updated", uk: "Пароль оновлено" },
+  "auth.resetPassword.successBody": {
+    en: "Your password has been updated. You can now sign in with your new password.",
+    uk: "Ваш пароль оновлено. Тепер ви можете увійти з новим паролем.",
+  },
+  "auth.resetPassword.invalidTitle": { en: "Invalid or expired link", uk: "Недійсне або прострочене посилання" },
+  "auth.resetPassword.invalidBody": {
+    en: "This password reset link is invalid or has expired. Request a new one.",
+    uk: "Це посилання для відновлення пароля недійсне або застаріло. Запросіть нове.",
+  },
+  "auth.resetPassword.invalidLink": {
+    en: "This password reset link is invalid or has expired.",
+    uk: "Це посилання для відновлення пароля недійсне або застаріло.",
+  },
+  "auth.resetPassword.requestNewLink": { en: "Request a new link", uk: "Запросити нове посилання" },
+
   // ---- dashboard ----
   "dashboard.pageTitle": { en: "Network — Knowledge Graph CRM", uk: "Мережа Зв'язків — Knowledge Graph CRM" },
   "dashboard.metric.nodes": { en: "Nodes", uk: "Вузли" },
@@ -92,9 +152,11 @@ export const dictionary = {
   "dashboard.metric.avgScore": { en: "Avg. score", uk: "Сер. оцінка" },
   "dashboard.tab.graph": { en: "Network graph", uk: "Граф зв'язків" },
   "dashboard.tab.companies": { en: "Companies", uk: "Компанії" },
+  "dashboard.tab.communities": { en: "Communities", uk: "Спільноти" },
   "dashboard.tab.contacts": { en: "Contacts", uk: "Контакти" },
   "dashboard.newContact": { en: "New contact", uk: "Новий контакт" },
   "dashboard.newCompany": { en: "New company", uk: "Нова компанія" },
+  "dashboard.newCommunity": { en: "New community", uk: "Нова спільнота" },
 
   // ---- quick add ----
   "quickAdd.title": { en: "New entry", uk: "Новий запис" },
@@ -138,6 +200,34 @@ export const dictionary = {
   },
   "company.delete.success": { en: "Company deleted", uk: "Компанію видалено" },
 
+  // ---- communities ----
+  "community.empty": {
+    en: "No communities yet. Group contacts by meetups, alumni networks, or any other affiliation.",
+    uk: "Ще немає спільнот. Групуйте контакти за подіями, alumni-мережами чи іншою належністю.",
+  },
+  "community.noContacts": { en: "No contacts in this community yet.", uk: "У цій спільноті ще немає контактів." },
+  "community.form.createTitle": { en: "New community", uk: "Нова спільнота" },
+  "community.form.editTitle": { en: "Edit community", uk: "Редагувати спільноту" },
+  "community.form.name": { en: "Name", uk: "Назва" },
+  "community.form.namePlaceholder": { en: "E.g. Startup Grind Kyiv", uk: "Напр. Startup Grind Kyiv" },
+  "community.form.description": { en: "Description", uk: "Опис" },
+  "community.form.descriptionPlaceholder": {
+    en: "Short description of this community...",
+    uk: "Короткий опис спільноти...",
+  },
+  "community.form.nameRequired": { en: "Community name is required.", uk: "Назва спільноти обов'язкова." },
+  "community.form.createSuccess": { en: "Community created", uk: "Спільноту створено" },
+  "community.form.editSuccess": { en: "Community updated", uk: "Спільноту оновлено" },
+  "community.form.duplicateName": {
+    en: "A community with this name already exists.",
+    uk: "Спільнота з такою назвою вже існує.",
+  },
+  "community.delete.confirm": {
+    en: "Delete {name}? Its contacts will keep their history but lose this community link.",
+    uk: "Видалити {name}? Контакти збережуть історію, але втратять зв'язок із цією спільнотою.",
+  },
+  "community.delete.success": { en: "Community deleted", uk: "Спільноту видалено" },
+
   // ---- contacts ----
   "contact.role.unknown": { en: "Role unknown", uk: "Роль невідома" },
   "contact.usefulness": { en: "Usefulness", uk: "Корисність" },
@@ -170,6 +260,11 @@ export const dictionary = {
   "contact.form.rolePlaceholder": { en: "E.g. VP Engineering", uk: "Напр. VP Engineering" },
   "contact.form.company": { en: "Company", uk: "Компанія" },
   "contact.form.companyNone": { en: "No company", uk: "Без компанії" },
+  "contact.form.communities": { en: "Communities", uk: "Спільноти" },
+  "contact.form.communitiesEmpty": {
+    en: "No communities yet — create one from the Communities tab.",
+    uk: "Ще немає спільнот — створіть у вкладці «Спільноти».",
+  },
   "contact.form.category": { en: "Category", uk: "Категорія" },
   "contact.form.usefulnessScore": { en: "Usefulness score (1-10)", uk: "Оцінка корисності (1-10)" },
   "contact.form.temperament": { en: "Temperament", uk: "Характер" },
@@ -201,6 +296,7 @@ export const dictionary = {
   // ---- interaction timeline ----
   "timeline.title": { en: "Interaction history", uk: "Історія взаємодій" },
   "timeline.empty": { en: "No previous interactions with this contact.", uk: "Немає попередніх взаємодій з цим контактом." },
+  "timeline.upcoming": { en: "Upcoming", uk: "Найближче" },
   "interactionType.CALL": { en: "Call", uk: "Дзвінок" },
   "interactionType.MEET": { en: "Meeting", uk: "Зустріч" },
   "interactionType.ZOOM": { en: "Zoom", uk: "Zoom" },
