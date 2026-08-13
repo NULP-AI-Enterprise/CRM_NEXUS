@@ -148,6 +148,8 @@ model ContactConnection {
   fromContact Contact @relation("OutgoingConnections", fields: [fromContactId], references: [id], onDelete: Cascade)
   toContact   Contact @relation("IncomingConnections", fields: [toContactId], references: [id], onDelete: Cascade)
 
+  interactions Interaction[]
+
   @@unique([fromContactId, toContactId])
   @@index([userId])
   @@index([fromContactId])
@@ -162,19 +164,29 @@ enum InteractionType {
   NOTE
 }
 
-/// A single logged communication / meeting with a contact.
+/// A single logged, dated event belonging to either a Contact (an interaction
+/// the user had directly) or a ContactConnection (an interaction the user
+/// observed/heard about between two of their own contacts). Exactly one of
+/// contactId/connectionId is set — enforced in application code, not the DB.
 model Interaction {
-  id        String           @id @default(cuid())
-  type      InteractionType  @default(NOTE)
-  rawText   String           @db.Text
+  id           String          @id @default(cuid())
+  type         InteractionType @default(NOTE)
+  rawText      String          @db.Text
   /// Next step / commitment extracted from rawText, if this note mentions one
   /// (e.g. "Wednesday: talk to the academy owner"). Null when none is found.
-  followUp  String?          @db.Text
-  createdAt DateTime         @default(now())
+  followUp     String?         @db.Text
+  /// Structured resolution of followUp's relative date ("Wednesday" -> an
+  /// absolute date), so it can be plotted on a timeline. Null when followUp
+  /// has no resolvable date or is itself null.
+  followUpDate DateTime?
+  createdAt    DateTime        @default(now())
 
-  contactId String
-  contact   Contact @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  contactId    String?
+  contact      Contact?           @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  connectionId String?
+  connection   ContactConnection? @relation(fields: [connectionId], references: [id], onDelete: Cascade)
 
   @@index([contactId])
+  @@index([connectionId])
   @@index([createdAt])
 }

@@ -8,11 +8,13 @@ import {
   UsersRound,
   Star,
   Network,
+  History,
   Plus,
 } from "lucide-react";
 
 import { QuickAddCard } from "@/components/quick-add/quick-add-card";
 import { NetworkGraph } from "@/components/graph/network-graph";
+import { TimelineView } from "@/components/timeline/timeline-view";
 import { CompanyAccordion } from "@/components/dashboard/company-accordion";
 import { CommunityAccordion } from "@/components/dashboard/community-accordion";
 import { ContactCard } from "@/components/dashboard/contact-card";
@@ -22,6 +24,7 @@ import { CommunityFormDialog } from "@/components/dashboard/community-form-dialo
 import { Button } from "@/components/ui/button";
 import { useTranslation } from "@/lib/i18n/context";
 import type { FullGraphData } from "@/lib/data/graph";
+import type { TimelineEntity, TimelineEvent } from "@/lib/timeline-entity";
 import type { CompanyModel, CommunityModel, ContactModel } from "@/generated/prisma/models";
 
 type CompanyWithContacts = CompanyModel & { contacts: ContactModel[] };
@@ -33,6 +36,8 @@ interface DashboardViewProps {
   unassignedContacts: ContactModel[];
   communities: CommunityWithContacts[];
   allContacts: ContactModel[];
+  timelineEvents: TimelineEvent[];
+  connectionEntities: TimelineEntity[];
 }
 
 export function DashboardView({
@@ -41,9 +46,11 @@ export function DashboardView({
   unassignedContacts,
   communities,
   allContacts,
+  timelineEvents,
+  connectionEntities,
 }: DashboardViewProps) {
   const { t } = useTranslation();
-  const [activeTab, setActiveTab] = useState<"graph" | "companies" | "communities" | "contacts">("graph");
+  const [activeTab, setActiveTab] = useState<"timeline" | "graph" | "companies" | "communities" | "contacts">("timeline");
   const [isNewContactOpen, setIsNewContactOpen] = useState(false);
   const [isNewCompanyOpen, setIsNewCompanyOpen] = useState(false);
   const [isNewCommunityOpen, setIsNewCommunityOpen] = useState(false);
@@ -69,71 +76,83 @@ export function DashboardView({
       {/* Telemetry Metrics Bar */}
       <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
         {/* Metric 1: Total Nodes */}
-        <div className="rounded-xl border border-white/[0.07] bg-zinc-900/40 p-3.5 flex flex-col justify-between">
-          <div className="flex items-center justify-between text-zinc-400 text-xs font-normal">
+        <div className="rounded-xl border border-border bg-card p-3.5 flex flex-col justify-between">
+          <div className="flex items-center justify-between text-muted-foreground text-xs font-normal">
             <span>{t("dashboard.metric.nodes")}</span>
-            <Network className="size-3.5 text-zinc-500" />
+            <Network className="size-3.5 text-muted-foreground" />
           </div>
           <div className="mt-2 flex items-baseline gap-2">
-            <span className="text-xl font-semibold tracking-tight text-white tabular-nums">
+            <span className="text-xl font-semibold tracking-tight text-foreground tabular-nums">
               {graphData.nodes.length}
             </span>
-            <span className="text-[11px] text-zinc-500">{t("dashboard.metric.nodesUnit")}</span>
+            <span className="text-[11px] text-muted-foreground">{t("dashboard.metric.nodesUnit")}</span>
           </div>
         </div>
 
         {/* Metric 2: Total Links */}
-        <div className="rounded-xl border border-white/[0.07] bg-zinc-900/40 p-3.5 flex flex-col justify-between">
-          <div className="flex items-center justify-between text-zinc-400 text-xs font-normal">
+        <div className="rounded-xl border border-border bg-card p-3.5 flex flex-col justify-between">
+          <div className="flex items-center justify-between text-muted-foreground text-xs font-normal">
             <span>{t("dashboard.metric.links")}</span>
-            <Share2 className="size-3.5 text-zinc-500" />
+            <Share2 className="size-3.5 text-muted-foreground" />
           </div>
           <div className="mt-2 flex items-baseline gap-2">
-            <span className="text-xl font-semibold tracking-tight text-white tabular-nums">
+            <span className="text-xl font-semibold tracking-tight text-foreground tabular-nums">
               {graphData.links.length}
             </span>
-            <span className="text-[11px] text-zinc-500">{t("dashboard.metric.linksUnit")}</span>
+            <span className="text-[11px] text-muted-foreground">{t("dashboard.metric.linksUnit")}</span>
           </div>
         </div>
 
         {/* Metric 3: Companies */}
-        <div className="rounded-xl border border-white/[0.07] bg-zinc-900/40 p-3.5 flex flex-col justify-between">
-          <div className="flex items-center justify-between text-zinc-400 text-xs font-normal">
+        <div className="rounded-xl border border-border bg-card p-3.5 flex flex-col justify-between">
+          <div className="flex items-center justify-between text-muted-foreground text-xs font-normal">
             <span>{t("dashboard.metric.companies")}</span>
-            <Building2 className="size-3.5 text-zinc-500" />
+            <Building2 className="size-3.5 text-muted-foreground" />
           </div>
           <div className="mt-2 flex items-baseline gap-2">
-            <span className="text-xl font-semibold tracking-tight text-white tabular-nums">
+            <span className="text-xl font-semibold tracking-tight text-foreground tabular-nums">
               {companies.length}
             </span>
-            <span className="text-[11px] text-zinc-500">{t("dashboard.metric.companiesUnit")}</span>
+            <span className="text-[11px] text-muted-foreground">{t("dashboard.metric.companiesUnit")}</span>
           </div>
         </div>
 
         {/* Metric 4: Avg Score */}
-        <div className="rounded-xl border border-white/[0.07] bg-zinc-900/40 p-3.5 flex flex-col justify-between">
-          <div className="flex items-center justify-between text-zinc-400 text-xs font-normal">
+        <div className="rounded-xl border border-border bg-card p-3.5 flex flex-col justify-between">
+          <div className="flex items-center justify-between text-muted-foreground text-xs font-normal">
             <span>{t("dashboard.metric.avgScore")}</span>
-            <Star className="size-3.5 text-zinc-500" />
+            <Star className="size-3.5 text-muted-foreground" />
           </div>
           <div className="mt-2 flex items-baseline gap-2">
-            <span className="text-xl font-semibold tracking-tight text-white font-mono">
+            <span className="text-xl font-semibold tracking-tight text-foreground font-mono">
               {avgScore}
             </span>
-            <span className="text-[11px] text-zinc-500">/ 10</span>
+            <span className="text-[11px] text-muted-foreground">/ 10</span>
           </div>
         </div>
       </div>
 
       {/* VIEW NAVIGATION SWITCHER (Segmented control) */}
-      <div className="flex items-center justify-between gap-2 border-b border-white/[0.07] pb-3">
-        <div className="inline-flex items-center gap-1 bg-zinc-900/60 p-1 rounded-lg border border-white/[0.06]">
+      <div className="flex items-center justify-between gap-2 border-b border-border pb-3">
+        <div className="inline-flex items-center gap-1 bg-muted p-1 rounded-lg border border-border overflow-x-auto max-w-full">
+          <button
+            onClick={() => setActiveTab("timeline")}
+            className={`flex items-center gap-2 rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
+              activeTab === "timeline"
+                ? "bg-card text-foreground shadow-sm"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <History className="size-3.5" />
+            <span>{t("dashboard.tab.timeline")}</span>
+          </button>
+
           <button
             onClick={() => setActiveTab("graph")}
             className={`flex items-center gap-2 rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
               activeTab === "graph"
-                ? "bg-zinc-800 text-white shadow-sm"
-                : "text-zinc-400 hover:text-zinc-200"
+                ? "bg-card text-foreground shadow-sm"
+                : "text-muted-foreground hover:text-foreground"
             }`}
           >
             <Network className="size-3.5" />
@@ -144,39 +163,39 @@ export function DashboardView({
             onClick={() => setActiveTab("companies")}
             className={`flex items-center gap-2 rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
               activeTab === "companies"
-                ? "bg-zinc-800 text-white shadow-sm"
-                : "text-zinc-400 hover:text-zinc-200"
+                ? "bg-card text-foreground shadow-sm"
+                : "text-muted-foreground hover:text-foreground"
             }`}
           >
             <Building2 className="size-3.5" />
             <span>{t("dashboard.tab.companies")}</span>
-            <span className="text-[11px] text-zinc-500 font-mono">({companies.length})</span>
+            <span className="text-[11px] text-muted-foreground font-mono">({companies.length})</span>
           </button>
 
           <button
             onClick={() => setActiveTab("communities")}
             className={`flex items-center gap-2 rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
               activeTab === "communities"
-                ? "bg-zinc-800 text-white shadow-sm"
-                : "text-zinc-400 hover:text-zinc-200"
+                ? "bg-card text-foreground shadow-sm"
+                : "text-muted-foreground hover:text-foreground"
             }`}
           >
             <UsersRound className="size-3.5" />
             <span>{t("dashboard.tab.communities")}</span>
-            <span className="text-[11px] text-zinc-500 font-mono">({communities.length})</span>
+            <span className="text-[11px] text-muted-foreground font-mono">({communities.length})</span>
           </button>
 
           <button
             onClick={() => setActiveTab("contacts")}
             className={`flex items-center gap-2 rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
               activeTab === "contacts"
-                ? "bg-zinc-800 text-white shadow-sm"
-                : "text-zinc-400 hover:text-zinc-200"
+                ? "bg-card text-foreground shadow-sm"
+                : "text-muted-foreground hover:text-foreground"
             }`}
           >
             <Users className="size-3.5" />
             <span>{t("dashboard.tab.contacts")}</span>
-            <span className="text-[11px] text-zinc-500 font-mono">({allContacts.length})</span>
+            <span className="text-[11px] text-muted-foreground font-mono">({allContacts.length})</span>
           </button>
         </div>
 
@@ -184,7 +203,7 @@ export function DashboardView({
           <Button
             size="sm"
             onClick={() => setIsNewCompanyOpen(true)}
-            className="h-7 px-3 text-xs bg-zinc-800 hover:bg-zinc-700 text-zinc-100 gap-1.5 rounded-md"
+            className="h-7 px-3 text-xs bg-secondary hover:bg-secondary/70 text-secondary-foreground gap-1.5 rounded-md"
           >
             <Plus className="size-3" />
             {t("dashboard.newCompany")}
@@ -194,7 +213,7 @@ export function DashboardView({
           <Button
             size="sm"
             onClick={() => setIsNewCommunityOpen(true)}
-            className="h-7 px-3 text-xs bg-zinc-800 hover:bg-zinc-700 text-zinc-100 gap-1.5 rounded-md"
+            className="h-7 px-3 text-xs bg-secondary hover:bg-secondary/70 text-secondary-foreground gap-1.5 rounded-md"
           >
             <Plus className="size-3" />
             {t("dashboard.newCommunity")}
@@ -204,13 +223,18 @@ export function DashboardView({
           <Button
             size="sm"
             onClick={() => setIsNewContactOpen(true)}
-            className="h-7 px-3 text-xs bg-zinc-800 hover:bg-zinc-700 text-zinc-100 gap-1.5 rounded-md"
+            className="h-7 px-3 text-xs bg-secondary hover:bg-secondary/70 text-secondary-foreground gap-1.5 rounded-md"
           >
             <Plus className="size-3" />
             {t("dashboard.newContact")}
           </Button>
         )}
       </div>
+
+      {/* TAB CONTENT: Timeline */}
+      {activeTab === "timeline" && (
+        <TimelineView events={timelineEvents} emptyConnectionEntities={connectionEntities} />
+      )}
 
       {/* TAB CONTENT: Interactive Graph */}
       {activeTab === "graph" && (

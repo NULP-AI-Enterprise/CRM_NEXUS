@@ -10,6 +10,56 @@ export class ContactNotFoundError extends Error {
   }
 }
 
+// LLMs are unreliable at exact day-of-week arithmetic ("Tuesday" from a
+// Thursday has landed on the wrong date in testing). Weekday names are the
+// most common and most mechanically checkable case, so once the model
+// extracts one, recompute it in code rather than trust the model's math.
+// Longer/more specific patterns are listed before substrings they contain
+// (e.g. "понеділ" before "неділ", since "понеділок" contains "неділ").
+const WEEKDAY_PATTERNS: Array<[pattern: string, dayOfWeek: number]> = [
+  ["понеділ", 1],
+  ["вівтор", 2],
+  ["серед", 3],
+  ["четвер", 4],
+  ["ятниц", 5], // covers п'ятниця / п’ятниця regardless of apostrophe variant
+  ["субот", 6],
+  ["неділ", 0],
+  ["monday", 1],
+  ["tuesday", 2],
+  ["wednesday", 3],
+  ["thursday", 4],
+  ["friday", 5],
+  ["saturday", 6],
+  ["sunday", 0],
+];
+
+function detectMentionedWeekday(text: string): number | null {
+  const lower = text.toLowerCase();
+  for (const [pattern, dayOfWeek] of WEEKDAY_PATTERNS) {
+    if (lower.includes(pattern)) return dayOfWeek;
+  }
+  return null;
+}
+
+/** The next occurrence of `dayOfWeek` strictly after `from` (never today). */
+function nextOccurrenceOf(dayOfWeek: number, from: Date): Date {
+  const result = new Date(from);
+  result.setHours(0, 0, 0, 0);
+  const diff = ((dayOfWeek - result.getDay() + 7) % 7) || 7;
+  result.setDate(result.getDate() + diff);
+  return result;
+}
+
+function resolveFollowUpDate(followUp: string | null, modelDate: string | null): Date | null {
+  const mentionedDow = followUp ? detectMentionedWeekday(followUp) : null;
+  if (mentionedDow != null) {
+    return nextOccurrenceOf(mentionedDow, new Date());
+  }
+  if (!modelDate) return null;
+  const parsed = new Date(modelDate);
+  return isNaN(parsed.getTime()) ? null : parsed;
+}
+
 function buildExistingProfileContext(contact: Contact): string {
   const lines = [
     `Ім'я: ${contact.fullName}`,
@@ -130,6 +180,7 @@ export async function processInteraction(params: {
         type,
         rawText,
         followUp: extraction.followUp,
+        followUpDate: resolveFollowUpDate(extraction.followUp, extraction.followUpDate),
       },
     });
 

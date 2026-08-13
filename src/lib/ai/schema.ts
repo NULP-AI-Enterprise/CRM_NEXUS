@@ -58,6 +58,12 @@ export const ContactExtractionSchema = z.object({
     .describe(
       "A concrete next step, plan, or commitment mentioned in THIS note for the future (e.g. 'Wednesday: will talk to the academy owner'). Include the timeframe if one was mentioned. Null if this note doesn't mention any future action or plan — do not invent one.",
     ),
+  followUpDate: z
+    .string()
+    .nullable()
+    .describe(
+      "The absolute date (YYYY-MM-DD) that followUp's timeframe resolves to, given today's date from the prompt context (e.g. 'Wednesday' resolves to the date of the next upcoming Wednesday). Null whenever followUp is null, or if it has no resolvable date (e.g. 'soon', 'later').",
+    ),
 });
 
 export type ContactExtraction = z.infer<typeof ContactExtractionSchema>;
