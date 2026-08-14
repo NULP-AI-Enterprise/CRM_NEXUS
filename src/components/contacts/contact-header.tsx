@@ -3,12 +3,12 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Building2, Star, Trash2, Pencil } from "lucide-react";
+import { Building2, Star, Trash2, Pencil, MapPin, Phone, Link2, Send, Camera, MessageCircle } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { CATEGORY_COLORS, initials } from "@/lib/contact-display";
+import { CATEGORY_COLORS, initials, linkedinUrl, telegramUrl, instagramUrl, whatsappUrl } from "@/lib/contact-display";
 import { useTranslation } from "@/lib/i18n/context";
 import type { CompanyModel, ContactModel } from "@/generated/prisma/models";
 import { ContactFormDialog } from "@/components/contacts/contact-form-dialog";
@@ -82,7 +82,79 @@ export function ContactHeader({
                   </Link>
                 </>
               )}
+              {(contact.city || contact.country) && (
+                <>
+                  <span className="text-muted-foreground/60">•</span>
+                  <span className="flex items-center gap-1">
+                    <MapPin className="size-3 text-muted-foreground" />
+                    {[contact.city, contact.country].filter(Boolean).join(", ")}
+                  </span>
+                </>
+              )}
             </div>
+
+            {(contact.phone || contact.linkedin || contact.telegram || contact.instagram || contact.whatsapp) && (
+              <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                {contact.phone && (
+                  <a
+                    href={`tel:${contact.phone}`}
+                    title={t("contact.form.phone")}
+                    className="flex items-center gap-1 rounded-md border border-border bg-muted px-2 py-1 text-xs text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+                  >
+                    <Phone className="size-3" />
+                    {contact.phone}
+                  </a>
+                )}
+                {contact.linkedin && (
+                  <a
+                    href={linkedinUrl(contact.linkedin)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    title={t("contact.form.linkedin")}
+                    className="flex items-center gap-1 rounded-md border border-border bg-muted px-2 py-1 text-xs text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+                  >
+                    <Link2 className="size-3" />
+                    LinkedIn
+                  </a>
+                )}
+                {contact.telegram && (
+                  <a
+                    href={telegramUrl(contact.telegram)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    title="Telegram"
+                    className="flex items-center gap-1 rounded-md border border-border bg-muted px-2 py-1 text-xs text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+                  >
+                    <Send className="size-3" />
+                    Telegram
+                  </a>
+                )}
+                {contact.instagram && (
+                  <a
+                    href={instagramUrl(contact.instagram)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    title="Instagram"
+                    className="flex items-center gap-1 rounded-md border border-border bg-muted px-2 py-1 text-xs text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+                  >
+                    <Camera className="size-3" />
+                    Instagram
+                  </a>
+                )}
+                {contact.whatsapp && (
+                  <a
+                    href={whatsappUrl(contact.whatsapp)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    title="WhatsApp"
+                    className="flex items-center gap-1 rounded-md border border-border bg-muted px-2 py-1 text-xs text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+                  >
+                    <MessageCircle className="size-3" />
+                    WhatsApp
+                  </a>
+                )}
+              </div>
+            )}
           </div>
         </div>
 

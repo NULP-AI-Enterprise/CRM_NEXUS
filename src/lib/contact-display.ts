@@ -113,3 +113,35 @@ export function initials(name: string): string {
     .map((part) => part[0]?.toUpperCase())
     .join("");
 }
+
+/// Contact channel fields accept a bare handle/number ("andriy_k",
+/// "+380501234567"), a schemeless domain ("linkedin.com/in/andriy" — how
+/// people usually paste these), or a full URL — normalize all three into an
+/// openable link. Checking the domain before falling back to "bare handle"
+/// matters: without it, a schemeless domain gets the handle-prefix
+/// prepended too, doubling the path (e.g. ".../in/linkedin.com/in/andriy").
+function toChannelUrl(value: string, domainPattern: RegExp, handlePrefix: string): string {
+  const trimmed = value.trim();
+  if (/^https?:\/\//i.test(trimmed)) return trimmed;
+  if (domainPattern.test(trimmed)) return `https://${trimmed.replace(/^www\./i, "")}`;
+  return `${handlePrefix}${trimmed.replace(/^@/, "")}`;
+}
+
+export function linkedinUrl(value: string): string {
+  return toChannelUrl(value, /^(www\.)?linkedin\.com/i, "https://linkedin.com/in/");
+}
+
+export function telegramUrl(value: string): string {
+  return toChannelUrl(value, /^(www\.)?t\.me/i, "https://t.me/");
+}
+
+export function instagramUrl(value: string): string {
+  return toChannelUrl(value, /^(www\.)?instagram\.com/i, "https://instagram.com/");
+}
+
+export function whatsappUrl(value: string): string {
+  const trimmed = value.trim();
+  if (/^https?:\/\//i.test(trimmed)) return trimmed;
+  if (/^(www\.)?wa\.me/i.test(trimmed)) return `https://${trimmed.replace(/^www\./i, "")}`;
+  return `https://wa.me/${trimmed.replace(/[^\d]/g, "")}`;
+}

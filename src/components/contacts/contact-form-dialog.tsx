@@ -48,6 +48,13 @@ export function ContactFormDialog({
   const [role, setRole] = useState("");
   const [companyId, setCompanyId] = useState("");
   const [category, setCategory] = useState<ContactCategory>("OTHER");
+  const [phone, setPhone] = useState("");
+  const [linkedin, setLinkedin] = useState("");
+  const [city, setCity] = useState("");
+  const [country, setCountry] = useState("");
+  const [telegram, setTelegram] = useState("");
+  const [instagram, setInstagram] = useState("");
+  const [whatsapp, setWhatsapp] = useState("");
   const [usefulnessScore, setUsefulnessScore] = useState("");
   const [temperament, setTemperament] = useState("");
   const [needs, setNeeds] = useState("");
@@ -66,6 +73,13 @@ export function ContactFormDialog({
     setRole(contact?.role ?? "");
     setCompanyId(contact?.companyId ?? "");
     setCategory(contact?.category ?? "OTHER");
+    setPhone(contact?.phone ?? "");
+    setLinkedin(contact?.linkedin ?? "");
+    setCity(contact?.city ?? "");
+    setCountry(contact?.country ?? "");
+    setTelegram(contact?.telegram ?? "");
+    setInstagram(contact?.instagram ?? "");
+    setWhatsapp(contact?.whatsapp ?? "");
     setUsefulnessScore(contact?.usefulnessScore != null ? String(contact.usefulnessScore) : "");
     setTemperament(contact?.temperament ?? "");
     setNeeds(contact?.needs ?? "");
@@ -91,6 +105,13 @@ export function ContactFormDialog({
       role: role.trim() || null,
       companyId: companyId || null,
       category,
+      phone: phone.trim() || null,
+      linkedin: linkedin.trim() || null,
+      city: city.trim() || null,
+      country: country.trim() || null,
+      telegram: telegram.trim() || null,
+      instagram: instagram.trim() || null,
+      whatsapp: whatsapp.trim() || null,
       usefulnessScore: usefulnessScore ? Number(usefulnessScore) : null,
       temperament: temperament.trim() || null,
       needs: needs.trim() || null,
@@ -193,6 +214,79 @@ export function ContactFormDialog({
                   </option>
                 ))}
               </select>
+            </div>
+          </div>
+
+          <div className="grid gap-3.5 sm:grid-cols-2">
+            <div className="flex flex-col gap-1">
+              <Label className="text-xs font-medium text-muted-foreground">{t("contact.form.phone")}</Label>
+              <Input
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                placeholder={t("contact.form.phonePlaceholder")}
+                className="bg-muted border-border text-base md:text-xs h-8 rounded-md"
+                disabled={isPending}
+              />
+            </div>
+            <div className="flex flex-col gap-1">
+              <Label className="text-xs font-medium text-muted-foreground">{t("contact.form.linkedin")}</Label>
+              <Input
+                value={linkedin}
+                onChange={(e) => setLinkedin(e.target.value)}
+                placeholder={t("contact.form.linkedinPlaceholder")}
+                className="bg-muted border-border text-base md:text-xs h-8 rounded-md"
+                disabled={isPending}
+              />
+            </div>
+          </div>
+
+          <div className="grid gap-3.5 sm:grid-cols-2">
+            <div className="flex flex-col gap-1">
+              <Label className="text-xs font-medium text-muted-foreground">{t("contact.form.city")}</Label>
+              <Input
+                value={city}
+                onChange={(e) => setCity(e.target.value)}
+                placeholder={t("contact.form.cityPlaceholder")}
+                className="bg-muted border-border text-base md:text-xs h-8 rounded-md"
+                disabled={isPending}
+              />
+            </div>
+            <div className="flex flex-col gap-1">
+              <Label className="text-xs font-medium text-muted-foreground">{t("contact.form.country")}</Label>
+              <Input
+                value={country}
+                onChange={(e) => setCountry(e.target.value)}
+                placeholder={t("contact.form.countryPlaceholder")}
+                className="bg-muted border-border text-base md:text-xs h-8 rounded-md"
+                disabled={isPending}
+              />
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <Label className="text-xs font-medium text-muted-foreground">{t("contact.form.channels")}</Label>
+            <div className="grid gap-3.5 grid-cols-1 sm:grid-cols-3">
+              <Input
+                value={telegram}
+                onChange={(e) => setTelegram(e.target.value)}
+                placeholder={t("contact.form.telegramPlaceholder")}
+                className="bg-muted border-border text-base md:text-xs h-8 rounded-md"
+                disabled={isPending}
+              />
+              <Input
+                value={instagram}
+                onChange={(e) => setInstagram(e.target.value)}
+                placeholder={t("contact.form.instagramPlaceholder")}
+                className="bg-muted border-border text-base md:text-xs h-8 rounded-md"
+                disabled={isPending}
+              />
+              <Input
+                value={whatsapp}
+                onChange={(e) => setWhatsapp(e.target.value)}
+                placeholder={t("contact.form.whatsappPlaceholder")}
+                className="bg-muted border-border text-base md:text-xs h-8 rounded-md"
+                disabled={isPending}
+              />
             </div>
           </div>
 

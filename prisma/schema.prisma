@@ -110,6 +110,14 @@ model Contact {
   company     Company? @relation(fields: [companyId], references: [id], onDelete: SetNull)
   companyName String?
 
+  phone     String?
+  linkedin  String?
+  telegram  String?
+  instagram String?
+  whatsapp  String?
+  city      String?
+  country   String?
+
   usefulnessScore Int?            @db.SmallInt
   category        ContactCategory @default(OTHER)
   temperament     String?

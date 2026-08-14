@@ -12,6 +12,13 @@ const contactInputSchema = z.object({
   companyId: z.string().min(1).nullish(),
   category: z.nativeEnum(ContactCategory).optional(),
   usefulnessScore: z.number().int().min(1).max(10).nullish(),
+  phone: z.string().trim().max(50).nullish(),
+  linkedin: z.string().trim().max(300).nullish(),
+  telegram: z.string().trim().max(100).nullish(),
+  instagram: z.string().trim().max(100).nullish(),
+  whatsapp: z.string().trim().max(50).nullish(),
+  city: z.string().trim().max(150).nullish(),
+  country: z.string().trim().max(150).nullish(),
   temperament: z.string().trim().max(2000).nullish(),
   needs: z.string().trim().max(2000).nullish(),
   valuePotential: z.string().trim().max(2000).nullish(),
@@ -51,7 +58,23 @@ export async function PATCH(request: Request, { params }: RouteContext) {
     );
   }
 
-  const { companyId, role, temperament, needs, valuePotential, fullSummary, communityIds, ...rest } = parsed.data;
+  const {
+    companyId,
+    role,
+    phone,
+    linkedin,
+    telegram,
+    instagram,
+    whatsapp,
+    city,
+    country,
+    temperament,
+    needs,
+    valuePotential,
+    fullSummary,
+    communityIds,
+    ...rest
+  } = parsed.data;
 
   let companyName: string | null = null;
   if (companyId) {
@@ -86,6 +109,13 @@ export async function PATCH(request: Request, { params }: RouteContext) {
       role: role || null,
       companyId: companyId || null,
       companyName,
+      phone: phone || null,
+      linkedin: linkedin || null,
+      telegram: telegram || null,
+      instagram: instagram || null,
+      whatsapp: whatsapp || null,
+      city: city || null,
+      country: country || null,
       category: rest.category ?? ContactCategory.OTHER,
       usefulnessScore: rest.usefulnessScore ?? null,
       temperament: temperament || null,
