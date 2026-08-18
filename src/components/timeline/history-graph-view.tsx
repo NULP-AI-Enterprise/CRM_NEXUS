@@ -112,6 +112,24 @@ interface PackShape {
   onZoomIn: () => void;
 }
 
+const shapeD = (type: string, r: number) => {
+  if (type === "person") return `M 0 ${-r} A ${r} ${r} 0 1 1 0 ${r} A ${r} ${r} 0 1 1 0 ${-r}`;
+  if (type === "company") {
+    const a = r * 0.88;
+    return `M ${-a} ${-a} H ${a} V ${a} H ${-a} Z`;
+  }
+  if (type === "community") {
+    const a = r * 1.05;
+    const b = r * 0.6;
+    return `M 0 ${-a} L ${a} ${b} L ${-a} ${b} Z`;
+  }
+  if (type === "project") {
+    const a = r * 0.88;
+    return `M 0 ${-a} L ${a} 0 L 0 ${a} L ${-a} 0 Z`;
+  }
+  return `M 0 ${-r} A ${r} ${r} 0 1 1 0 ${r} A ${r} ${r} 0 1 1 0 ${-r}`;
+};
+
 export function HistoryGraphView({
   events,
   connections,
@@ -690,7 +708,7 @@ export function HistoryGraphView({
                   <g key={b.id} onClick={b.onSelect} style={{ cursor: "pointer" }}>
                     <rect x={b.x} y={b.y} width={b.w} height={b.h} rx={26} fill={b.tint} stroke={b.color} strokeWidth={b.sw} />
                     {b.nodes.map((n, i) => (
-                      <circle key={i} cx={n.cx} cy={n.cy} r={11} fill={n.color} stroke="#fff" strokeWidth={1.4} />
+                      <path key={i} d={shapeD("person", 11)} transform={`translate(${n.cx},${n.cy})`} fill={n.color} stroke="#fff" strokeWidth={1.4} />
                     ))}
                     <text x={b.lx} y={b.ly} fontFamily="var(--font-sans)" fontSize={12} fontWeight={600} fill="#3E4756">
                       {b.title}

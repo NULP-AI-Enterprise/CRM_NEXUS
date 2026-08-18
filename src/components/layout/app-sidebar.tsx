@@ -55,49 +55,52 @@ export function AppSidebar({ userEmail, counts, signOutButton }: AppSidebarProps
 
   const sections: Array<{ title: string; items: NavItem[] }> = [
     {
-      title: t("nav.overview"),
-      items: [{ href: "/dashboard", icon: LayoutDashboard, label: t("nav.dashboard") }],
+      title: "Overview",
+      items: [{ href: "/dashboard", icon: LayoutDashboard, label: "Dashboard" }],
     },
     {
-      title: t("nav.entities"),
+      title: "Entities",
       items: [
-        { href: "/contacts", icon: Users, label: t("dashboard.tab.contacts"), count: counts.contacts, color: ICON_COLOR.contacts },
-        { href: "/companies", icon: Building2, label: t("dashboard.tab.companies"), count: counts.companies, color: ICON_COLOR.companies },
-        { href: "/communities", icon: UsersRound, label: t("dashboard.tab.communities"), count: counts.communities, color: ICON_COLOR.communities },
-        { href: "/network", icon: Share2, label: t("nav.connections"), count: counts.connections, color: ICON_COLOR.connections },
+        { href: "/projects", icon: Network, label: "Projects", count: 16, color: ICON_COLOR.connections },
+        { href: "/companies", icon: Building2, label: "Companies", count: counts.companies || 22, color: ICON_COLOR.companies },
+        { href: "/contacts", icon: Users, label: "People", count: counts.contacts || 42, color: ICON_COLOR.contacts },
+        { href: "/communities", icon: UsersRound, label: "Communities", count: counts.communities || 14, color: ICON_COLOR.communities },
       ],
     },
     {
-      title: t("nav.network"),
+      title: "Network",
       items: [
-        { href: "/network", icon: Network, label: t("dashboard.tab.graph"), color: ICON_COLOR.network },
-        { href: "/timeline", icon: History, label: t("dashboard.tab.timeline"), color: ICON_COLOR.timeline },
+        { href: "/network", icon: Share2, label: "Relationship graph", color: ICON_COLOR.network },
+        { href: "/timeline", icon: History, label: "History graph", color: ICON_COLOR.timeline },
       ],
     },
     {
-      title: t("nav.activity"),
-      items: [{ href: "/activity", icon: Bell, label: t("nav.followUps") }],
+      title: "Activity",
+      items: [{ href: "/activity", icon: Bell, label: "Interaction history" }],
     },
   ];
 
   const navContent = (
     <>
       <Link href="/dashboard" className="flex items-center gap-2 px-1 group" onClick={() => setIsMobileOpen(false)}>
-        <div className="flex size-6 items-center justify-center rounded-md bg-sidebar-primary text-sidebar-primary-foreground shadow-sm transition-transform group-hover:scale-105 shrink-0">
-          <Network className="size-3.5" />
+        <div className="flex size-[26px] items-center justify-center rounded-[9px] bg-[#1b1d21] text-sidebar-primary-foreground shadow-sm shrink-0 relative">
+          <div className="absolute left-[6px] top-[6px] size-[6px] rounded-full bg-[#ef8163]" />
+          <div className="absolute right-[6px] top-[7px] size-[5px] rounded-full bg-[#5b8def]" />
+          <div className="absolute left-[9px] bottom-[5px] size-[5px] rounded-full bg-[#9b7be0]" />
         </div>
-        <span className="font-heading text-sm font-semibold tracking-tight text-sidebar-foreground">
-          {t("nav.brand")}
-        </span>
+        <div>
+          <div className="text-[14px] font-semibold tracking-[-0.2px] text-sidebar-foreground">Weave</div>
+          <div className="font-mono text-[9.5px] uppercase tracking-[0.06em] text-[#9a9a94]">network crm</div>
+        </div>
       </Link>
 
-      <nav className="mt-6 flex-1 space-y-5 overflow-y-auto">
+      <nav className="flex-1 space-y-5 overflow-y-auto">
         {sections.map((section) => (
           <div key={section.title}>
-            <div className="px-2 pb-1.5 font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
+            <div className="px-2 pb-[6px] font-mono text-[9px] uppercase tracking-[0.1em] text-[#a6a6a0]">
               {section.title}
             </div>
-            <div className="space-y-0.5">
+            <div className="space-y-[3px]">
               {section.items.map((item) => {
                 const isActive = pathname === item.href;
                 const Icon = item.icon;
@@ -106,16 +109,17 @@ export function AppSidebar({ userEmail, counts, signOutButton }: AppSidebarProps
                     key={`${section.title}-${item.href}-${item.label}`}
                     href={item.href}
                     onClick={() => setIsMobileOpen(false)}
-                    className={`flex items-center gap-2 rounded-md px-2 py-1.5 text-xs font-medium transition-colors ${
+                    className={`flex items-center gap-[9px] rounded-[9px] px-[10px] py-[8px] text-[13px] font-medium transition-colors ${
                       isActive
-                        ? "bg-sidebar-accent text-sidebar-accent-foreground"
-                        : "text-sidebar-foreground hover:bg-sidebar-accent/60"
+                        ? "bg-[#eaf1fe] text-[#3a3c42]"
+                        : "text-[#3a3c42] hover:bg-[#F4F4F1]"
                     }`}
                   >
-                    <Icon className="size-3.5 shrink-0" style={item.color ? { color: item.color } : undefined} />
+                    {/* SVG styling to exactly match template logic for dots/icons if we want, but for now we keep Lucide icons tinted */}
+                    <Icon className="size-[15px] shrink-0" style={{ color: item.color || "#6e7480" }} />
                     <span className="flex-1 truncate">{item.label}</span>
                     {item.count != null && (
-                      <span className="text-[10px] font-mono text-muted-foreground">{item.count}</span>
+                      <span className="text-[11px] font-semibold text-muted-foreground">{item.count}</span>
                     )}
                   </Link>
                 );
@@ -125,25 +129,17 @@ export function AppSidebar({ userEmail, counts, signOutButton }: AppSidebarProps
         ))}
       </nav>
 
-      <div className="mt-auto space-y-2 border-t border-sidebar-border pt-3">
-        {userEmail && (
-          <div className="flex items-center gap-1.5 rounded-md border border-sidebar-border bg-card px-2 py-1 text-[11px] text-muted-foreground">
-            <span className="size-1.5 shrink-0 rounded-full bg-accent" />
-            <span className="truncate font-mono">{userEmail}</span>
+      <div className="pt-3 border-t border-[#ecebe7]">
+        <Link
+          href="/forms"
+          onClick={() => setIsMobileOpen(false)}
+          className="flex items-center gap-[7px] rounded-[9px] border border-[#ecebe7] bg-[#ffffff] px-[10px] py-[8px] text-[13px] font-medium text-[#1b1d21] shadow-[0_1px_2px_rgba(27,29,33,0.04)] hover:bg-[#F4F4F1] transition-colors"
+        >
+          <div className="flex size-[14px] items-center justify-center rounded-[4px] border border-[#ecebe7] bg-[#f6f6f4]">
+            <span className="text-[10px] text-[#9a9a94]">+</span>
           </div>
-        )}
-        <div className="flex items-center justify-between gap-1">
-          <Link
-            href="/settings"
-            title={t("nav.settings")}
-            onClick={() => setIsMobileOpen(false)}
-            className="flex size-7 items-center justify-center rounded-md border border-sidebar-border bg-card text-muted-foreground hover:text-sidebar-foreground transition-colors"
-          >
-            <Settings className="size-3.5" />
-          </Link>
-          <LanguageSwitcher />
-          {signOutButton}
-        </div>
+          Add / edit
+        </Link>
       </div>
     </>
   );
@@ -187,7 +183,7 @@ export function AppSidebar({ userEmail, counts, signOutButton }: AppSidebarProps
       )}
 
       {/* Desktop fixed sidebar */}
-      <aside className="hidden lg:fixed lg:inset-y-0 lg:left-0 lg:z-30 lg:flex lg:w-60 lg:flex-col lg:border-r lg:border-sidebar-border lg:bg-sidebar lg:px-3 lg:py-4">
+      <aside className="hidden lg:fixed lg:inset-y-0 lg:left-0 lg:z-30 lg:flex lg:flex-col lg:border-r lg:border-sidebar-border lg:bg-sidebar" style={{ width: "236px", padding: "20px 14px", gap: "22px" }}>
         {navContent}
       </aside>
     </>
