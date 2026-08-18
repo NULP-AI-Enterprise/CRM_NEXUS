@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Building2, Users, Pencil, Trash2 } from "lucide-react";
+import { Building2, Users } from "lucide-react";
 import { toast } from "sonner";
 
 import {
@@ -14,12 +14,14 @@ import {
 import { ContactCard } from "@/components/dashboard/contact-card";
 import { CompanyFormDialog } from "@/components/dashboard/company-form-dialog";
 import { ConfirmDeleteDialog } from "@/components/confirm-delete-dialog";
+import { EntityCardActions } from "@/components/dashboard/entity-card";
 import { useTranslation } from "@/lib/i18n/context";
 import type { CompanyModel, ContactModel } from "@/generated/prisma/models";
 
 type CompanyWithContacts = CompanyModel & { contacts: ContactModel[] };
 
 const UNASSIGNED_VALUE = "__unassigned";
+const ROW_COLUMNS = "minmax(0, 1fr) 160px 90px 64px";
 
 export function CompanyAccordion({
   companies,
@@ -49,46 +51,40 @@ export function CompanyAccordion({
 
   return (
     <>
-      <Accordion defaultValue={defaultValue} className="space-y-2">
+      <Accordion defaultValue={defaultValue} className="rounded-[16px] border border-border bg-card overflow-hidden">
+        <div
+          className="grid gap-3 border-b border-border bg-muted/40 px-[18px] py-[11px] font-mono text-[9.5px] uppercase tracking-[0.08em] text-muted-foreground"
+          style={{ gridTemplateColumns: ROW_COLUMNS }}
+        >
+          <div>{t("company.table.company")}</div>
+          <div>{t("company.table.industry")}</div>
+          <div>{t("company.table.contacts")}</div>
+          <div />
+        </div>
+
         {companies.map((company) => (
-          <AccordionItem
-            key={company.id}
-            value={company.id}
-            className="rounded-xl border border-border bg-card px-4 transition-colors hover:border-accent/40"
-          >
-            <AccordionTrigger className="py-3 hover:no-underline">
-              <div className="flex flex-wrap items-center gap-2 text-left">
-                <div className="flex size-6 items-center justify-center rounded-md bg-secondary text-muted-foreground">
-                  <Building2 className="size-3.5" />
+          <AccordionItem key={company.id} value={company.id} className="group relative not-last:border-b border-border">
+            <AccordionTrigger className="px-[18px] py-[13px] pr-16 hover:no-underline hover:bg-muted/40 rounded-none">
+              <div
+                className="grid w-full items-center gap-3"
+                style={{ gridTemplateColumns: ROW_COLUMNS }}
+              >
+                <div className="flex items-center gap-[9px] min-w-0">
+                  <Building2 className="size-3.5 shrink-0" style={{ color: "#43A883" }} />
+                  <span className="truncate text-[13px] font-semibold text-foreground">{company.name}</span>
                 </div>
-                <span className="font-medium text-foreground text-xs tracking-tight">{company.name}</span>
-                {company.industry && (
-                  <span className="text-[11px] text-muted-foreground font-normal">({company.industry})</span>
-                )}
-                <span className="ml-1 inline-flex items-center gap-1 rounded-md border border-border bg-secondary px-1.5 py-0.5 text-[10px] text-muted-foreground font-mono">
-                  <Users className="size-2.5 text-muted-foreground" />
-                  {company.contacts.length}
-                </span>
+                <div className="truncate text-[12px] text-muted-foreground">{company.industry ?? "—"}</div>
+                <div className="text-[12px] text-muted-foreground">{company.contacts.length}</div>
+                <div />
               </div>
             </AccordionTrigger>
-            <AccordionContent className="pb-3.5 pt-0.5">
-              <div className="mb-2.5 flex items-center justify-end gap-1">
-                <button
-                  onClick={() => setEditingCompany(company)}
-                  className="flex items-center gap-1 rounded-md px-2 py-1 text-[11px] text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-                >
-                  <Pencil className="size-3" />
-                  {t("common.edit")}
-                </button>
-                <button
-                  onClick={() => setDeletingCompany(company)}
-                  className="flex items-center gap-1 rounded-md px-2 py-1 text-[11px] text-muted-foreground hover:text-destructive hover:bg-muted transition-colors"
-                >
-                  <Trash2 className="size-3" />
-                  {t("common.delete")}
-                </button>
-              </div>
-              <div className="grid gap-2 sm:grid-cols-2">
+            <EntityCardActions
+              onEdit={() => setEditingCompany(company)}
+              onDelete={() => setDeletingCompany(company)}
+              className="absolute right-[18px] top-1/2 -translate-y-1/2"
+            />
+            <AccordionContent className="px-[18px] pb-4 pt-0">
+              <div className="grid gap-3" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(230px, 1fr))" }}>
                 {company.contacts.map((contact) => (
                   <ContactCard key={contact.id} contact={contact} />
                 ))}
@@ -98,23 +94,16 @@ export function CompanyAccordion({
         ))}
 
         {unassignedContacts.length > 0 && (
-          <AccordionItem
-            value={UNASSIGNED_VALUE}
-            className="rounded-xl border border-border bg-card px-4 transition-colors hover:border-accent/40"
-          >
-            <AccordionTrigger className="py-3 hover:no-underline">
-              <div className="flex items-center gap-2 text-left">
-                <div className="flex size-6 items-center justify-center rounded-md bg-secondary text-muted-foreground">
-                  <Users className="size-3.5" />
-                </div>
-                <span className="font-medium text-foreground text-xs">{t("company.noCompany")}</span>
-                <span className="rounded-md border border-border bg-secondary px-1.5 py-0.5 text-[10px] text-muted-foreground font-mono">
-                  {unassignedContacts.length}
-                </span>
+          <AccordionItem value={UNASSIGNED_VALUE} className="group relative">
+            <AccordionTrigger className="px-[18px] py-[13px] hover:no-underline hover:bg-muted/40 rounded-none">
+              <div className="flex items-center gap-[9px]">
+                <Users className="size-3.5 shrink-0 text-muted-foreground" />
+                <span className="text-[13px] font-semibold text-foreground">{t("company.noCompany")}</span>
+                <span className="font-mono text-[11px] text-muted-foreground">{unassignedContacts.length}</span>
               </div>
             </AccordionTrigger>
-            <AccordionContent className="pb-3.5 pt-0.5">
-              <div className="grid gap-2 sm:grid-cols-2">
+            <AccordionContent className="px-[18px] pb-4 pt-0">
+              <div className="grid gap-3" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(230px, 1fr))" }}>
                 {unassignedContacts.map((contact) => (
                   <ContactCard key={contact.id} contact={contact} />
                 ))}

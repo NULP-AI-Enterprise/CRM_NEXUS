@@ -8,8 +8,9 @@ import { checkRateLimit, getClientIp, rateLimitedResponse } from "@/lib/rate-lim
 
 const RequestSchema = z.object({
   rawText: z.string().trim().min(1, "Текст не може бути порожнім.").max(8000),
-  type: z.nativeEnum(InteractionType).default("NOTE"),
+  type: z.nativeEnum(InteractionType).default("MEMO"),
   contactId: z.string().min(1).optional(),
+  parentInteractionId: z.string().min(1).nullish(),
 });
 
 export async function POST(request: Request) {
@@ -42,6 +43,7 @@ export async function POST(request: Request) {
       rawText: parsed.data.rawText,
       type: parsed.data.type,
       contactId: parsed.data.contactId,
+      parentInteractionId: parsed.data.parentInteractionId,
     });
 
     return NextResponse.json({ contact }, { status: 200 });

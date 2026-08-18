@@ -923,6 +923,7 @@ postgresql://personal_crm:<pass>@personal-crm-postgres.personal-crm.svc.cluster.
 | `OPENAI_API_KEY` | ключ для `gpt-4o-mini` (Structured Outputs) — https://platform.openai.com/api-keys |
 | `AUTH_SECRET` | ключ шифрування Auth.js JWT-сесії, `openssl rand -base64 32`; ротація = вихід усіх користувачів із сесії |
 | `SMTP_HOST`, `SMTP_PORT`, `SMTP_USERNAME`, `SMTP_PASSWORD` | SMTP для листів підтвердження email. Для Gmail — App Password (https://myaccount.google.com/apppasswords), не пароль акаунту |
+| `ADMIN_EMAILS` | comma-separated allowlist для `/admin` (див. §5c). **Не** колонка в БД — навмисно: env var неможливо переписати через жоден HTTP-роут, тож самопризначення прав неможливе структурно |
 
 `AUTH_URL`, `AUTH_TRUST_HOST` і `APP_URL` — несекретні, прописані прямо в
 `deployment.yaml` (Auth.js за Traefik-проксі потребує `trustHost`, інакше
@@ -1035,6 +1036,94 @@ OpenAI API. Це навмисно (нотатка обробляється за 
 Health-check не перевіряє SMTP (так само, як не перевіряє OpenAI) — і Gmail,
 і OpenAI — зовнішні залежності, недоступність яких не повинна знімати под з
 трафіку.
+
+## 5b. MCP-сервер для AI-асистентів (Claude / ChatGPT / Gemini)
+
+`POST|GET|DELETE /api/mcp` — Model Context Protocol сервер, що дає зовнішньому
+AI-асистенту ті самі можливості, що й веб-UI (contacts/companies/communities/
+connections CRUD, `process_interaction`, таймлайн/follow-up запити),
+автентифікований через **API-ключ**, а не сесію.
+
+**Ніякого нового k8s-ресурсу** — той самий образ, той самий under, той самий
+`personal-crm-secret`. Єдина інфраструктурна зміна — новий прямий dependency
+`@modelcontextprotocol/sdk` у `package.json` (Docker-білд підхоплює його
+автоматично через `npm install`, окремих кроків не потрібно).
+
+Ключова відмінність від решти застосунку: **stateless** — кожен виклик сам
+себе автентифікує через `Authorization: Bearer <ключ>`
+(`src/lib/mcp/auth.ts`), тому новий `McpServer` створюється на кожен HTTP-
+запит (`src/lib/mcp/server.ts`), а не живе між запитами. Узгоджується з тим,
+що й так весь застосунок — один под, `strategy: Recreate`, in-memory
+rate-limiter (`src/lib/rate-limit.ts`) без координації між репліками.
+
+- **Ключі** — модель `ApiKey` (`prisma/schema.prisma`): зберігається лише
+  SHA-256 хеш, сирий ключ (`nxs_...`) показується один раз при створенні.
+  Керування — сторінка `/settings` (сесія, не MCP — ключі не можна
+  створювати/відкликати через сам MCP, інакше протікла копія плодила б собі
+  заміну і робила відкликання марним).
+- **`scope`** (`READ` / `READ_WRITE`) визначає, чи взагалі зареєстровані
+  write-інструменти для цього ключа — не просто runtime-перевірка, ключ з
+  `READ` навіть не бачить їх у `tools/list`.
+- **`redactSensitive`** (типово `true`) приховує в результатах інструментів
+  телефон/соцмережі/локацію контакту, AI-судження (`temperament/needs/
+  valuePotential/fullSummary`) і `Interaction.rawText` — це реальні дані
+  третіх осіб, які йдуть до зовнішнього AI-вендора при кожному виклику
+  інструменту, тож типова поведінка — приховати їх.
+- Rate limit: `mcpToolCall` (60/хв), ключується по `apiKeyId`, а не по IP —
+  легітимний клієнт дзвонить з IP вендора, а протеклий ключ, використаний з
+  нового IP, все одно має бути обмежений.
+
+**Підключення** — приклад `.mcp.json` (у корені репо, без секрету всередині):
+
+```json
+{
+  "mcpServers": {
+    "nexus-crm": {
+      "type": "http",
+      "url": "https://personal-crm.thesis-i.com/api/mcp",
+      "headers": { "Authorization": "Bearer ${NEXUS_MCP_API_KEY}" }
+    }
+  }
+}
+```
+
+`NEXUS_MCP_API_KEY` — локальна змінна середовища користувача (не комітиться),
+значення — сирий ключ зі сторінки `/settings`. Claude Desktop/Code — пряма
+підтримка через `.mcp.json`/Custom Connector. ChatGPT/Gemini додають
+підтримку remote MCP поступово — перевіряти актуальну документацію
+провайдера перед підключенням, а не покладатись на цей опис.
+
+## 5c. Адмінка (`/admin`)
+
+Перегляд і CRUD-редагування даних **будь-якого** користувача — Contacts
+(повний CRUD), Companies/Communities (CRUD), Connections (лише перегляд +
+видалення). Єдиний виняток за весь застосунок від правила "юзер бачить лише
+своє".
+
+- **Хто адмін** — виключно `ADMIN_EMAILS` (env var, §2), **не** колонка в БД.
+  Колонку може переписати будь-який майбутній код-шлях, що оновлює `User`;
+  env var не можна переписати через жоден HTTP-роут — самопризначення прав
+  структурно неможливе.
+- **Захист у два шари**: `src/app/admin/layout.tsx` (`notFound()` для
+  залогіненого не-адміна — не 403, щоб не підтверджувати існування роуту) +
+  окрема перевірка на початку **кожного** `/api/admin/**` роуту
+  (`requireAdminApi()`) — роут-хендлери не є дітьми `layout`, тож самого
+  layout-гейту не досить.
+- **`src/lib/data/admin.ts`** — єдине місце з навмисно не-scoped (без
+  `userId`-фільтру) запитами; імпорт звідти поза `src/app/admin/**` —
+  `eslint` error (`eslint.config.mjs`), а не лише ризик пропустити на review.
+- **`AdminAuditLog`** — пишеться на кожен запис (create/update/delete), не на
+  читання. Дет UI-в'юера немає — дивитись через Prisma Studio.
+- **Свідомо поза межами**: `ApiKey`/токени verification/reset ніде не
+  читаються й не показуються (доступ до них — не "більше даних", а account
+  takeover); імперсонація/bulk-операції/видалення акаунту цілком.
+- **Пастка при деплої без downtime**: якщо процес застосунку живе довше, ніж
+  міграція, що додає нову Prisma-модель (як `AdminAuditLog`), singleton
+  `PrismaClient` (`src/lib/prisma.ts`) лишається зі старою згенерованою
+  схемою в пам'яті — виклики до нової моделі впадуть `undefined`, доки под не
+  перезапуститься. У k8s це вирішується самим деплой-циклом (новий под = новий
+  процес); у локальній розробці — просто перезапустити `next dev` після
+  `prisma migrate dev`.
 
 ## 6. Health check
 

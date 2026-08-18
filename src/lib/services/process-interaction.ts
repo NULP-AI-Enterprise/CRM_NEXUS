@@ -80,8 +80,9 @@ export async function processInteraction(params: {
   rawText: string;
   type: InteractionType;
   contactId?: string;
+  parentInteractionId?: string | null;
 }) {
-  const { userId, rawText, type, contactId } = params;
+  const { userId, rawText, type, contactId, parentInteractionId } = params;
 
   let existingContact: Contact | null = null;
   if (contactId) {
@@ -174,6 +175,21 @@ export async function processInteraction(params: {
       }
     }
 
+    // A branch's parent just has to be one of the user's own interactions —
+    // not necessarily on this same contact/connection. That's what makes a
+    // provenance chain possible at all: X introduces Y, so Y's first-ever
+    // interaction can branch off X's, even though nothing yet links X and Y.
+    // Still never guessed if the id is stale (e.g. from a just-refreshed
+    // list elsewhere) — ownership is always re-checked here.
+    let validParentId: string | null = null;
+    if (parentInteractionId) {
+      const parent = await tx.interaction.findFirst({
+        where: { id: parentInteractionId, OR: [{ contact: { userId } }, { connection: { userId } }] },
+        select: { id: true },
+      });
+      validParentId = parent?.id ?? null;
+    }
+
     await tx.interaction.create({
       data: {
         contactId: contactId2,
@@ -181,6 +197,7 @@ export async function processInteraction(params: {
         rawText,
         followUp: extraction.followUp,
         followUpDate: resolveFollowUpDate(extraction.followUp, extraction.followUpDate),
+        parentInteractionId: validParentId,
       },
     });
 

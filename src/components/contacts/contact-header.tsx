@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Building2, Star, Trash2, Pencil, MapPin, Phone, Link2, Send, Camera, MessageCircle } from "lucide-react";
+import { Building2, Star, Trash2, Pencil, MapPin, Phone, Link2, Send, Camera, MessageCircle, Share2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -47,7 +47,7 @@ export function ContactHeader({
   };
 
   return (
-    <div className="rounded-xl border border-border bg-card p-5 relative">
+    <div className="relative border-b border-border p-5" style={{ backgroundColor: colors.bg }}>
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div className="flex items-center gap-3.5">
           <Avatar className="size-14 border border-border bg-secondary shrink-0">
@@ -160,7 +160,7 @@ export function ContactHeader({
 
         <div className="flex items-center gap-2">
           {contact.usefulnessScore != null && (
-            <div className="flex items-center gap-2 rounded-lg bg-muted border border-border px-3 py-1.5 text-foreground">
+            <div className="flex items-center gap-2 rounded-lg bg-card border border-border px-3 py-1.5 text-foreground">
               <Star className="size-4 text-accent" />
               <div>
                 <div className="text-[10px] uppercase text-muted-foreground font-medium">{t("contact.valueScore")}</div>
@@ -170,6 +170,13 @@ export function ContactHeader({
               </div>
             </div>
           )}
+          <Link
+            href={`/network?focus=${contact.id}`}
+            className="flex h-8 items-center gap-1.5 rounded-md bg-primary px-3 text-xs font-semibold text-primary-foreground hover:bg-primary/90 transition-colors"
+          >
+            <Share2 className="size-3.5" />
+            {t("contact.viewInGraph")}
+          </Link>
           <Button
             size="icon"
             variant="outline"

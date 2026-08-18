@@ -2,12 +2,11 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
 import { auth } from "@/lib/auth";
-import { getCompaniesWithContacts } from "@/lib/data/companies";
-import { getCommunitiesWithContacts } from "@/lib/data/communities";
+import { getEntityCounts } from "@/lib/data/counts";
 import { getGraphData } from "@/lib/data/graph";
-import { getTimelineData, getAllConnectionEntities } from "@/lib/data/timeline";
-import { listContacts } from "@/lib/data/contacts";
-import { DashboardView } from "@/components/dashboard/dashboard-view";
+import { getTimelineData } from "@/lib/data/timeline";
+import { computeDashboardSummary } from "@/lib/dashboard-summary";
+import { OverviewView } from "@/components/dashboard/overview-view";
 
 export const metadata: Metadata = {
   title: "Мережа Зв'язків — Knowledge Graph CRM",
@@ -19,26 +18,13 @@ export default async function DashboardPage() {
     redirect("/login");
   }
 
-  const [graphData, { companies, unassignedContacts }, communities, allContacts, timelineEvents, connectionEntities] =
-    await Promise.all([
-      getGraphData(session.user.id),
-      getCompaniesWithContacts(session.user.id),
-      getCommunitiesWithContacts(session.user.id),
-      listContacts(session.user.id),
-      getTimelineData(session.user.id),
-      getAllConnectionEntities(session.user.id),
-    ]);
+  const [counts, graphData, timelineEvents] = await Promise.all([
+    getEntityCounts(session.user.id),
+    getGraphData(session.user.id),
+    getTimelineData(session.user.id),
+  ]);
 
-  return (
-    <DashboardView
-      graphData={graphData}
-      companies={companies}
-      unassignedContacts={unassignedContacts}
-      communities={communities}
-      allContacts={allContacts}
-      timelineEvents={timelineEvents}
-      connectionEntities={connectionEntities}
-    />
-  );
+  const summary = computeDashboardSummary(counts, graphData, timelineEvents);
+
+  return <OverviewView summary={summary} topHubs={graphData.stats.topHubs} />;
 }
-

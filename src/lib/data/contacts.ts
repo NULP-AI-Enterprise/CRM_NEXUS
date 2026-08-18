@@ -65,6 +65,13 @@ export async function getContactDetail(userId: string, contactId: string) {
 export async function listContacts(userId: string) {
   return prisma.contact.findMany({
     where: { userId },
+    include: {
+      interactions: {
+        select: { createdAt: true },
+        orderBy: { createdAt: "desc" },
+        take: 1,
+      },
+    },
     orderBy: [
       { usefulnessScore: "desc" },
       { fullName: "asc" },

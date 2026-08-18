@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { ArrowLeft, History, Plus } from "lucide-react";
+import { ChevronRight, History, Plus } from "lucide-react";
 
 import { auth } from "@/lib/auth";
 import { getContactDetail } from "@/lib/data/contacts";
@@ -10,6 +10,7 @@ import { listCommunities } from "@/lib/data/communities";
 import { getServerTranslation } from "@/lib/i18n/server";
 import { ContactHeader } from "@/components/contacts/contact-header";
 import { ContactInsightsPanel } from "@/components/contacts/contact-insights-panel";
+import { ContactProfileBody } from "@/components/contacts/contact-profile-body";
 import { AddNoteForm } from "@/components/contacts/add-note-form";
 import { TimelineView } from "@/components/timeline/timeline-view";
 import { entityKey, type TimelineEvent } from "@/lib/timeline-entity";
@@ -83,50 +84,56 @@ export default async function ContactPage({ params }: ContactPageProps) {
     followUp: i.followUp,
     followUpDate: i.followUpDate?.toISOString() ?? null,
     createdAt: i.createdAt.toISOString(),
+    parentInteractionId: i.parentInteractionId,
     entity: { kind: "contact", contact: contactEntity },
   }));
 
   return (
     <div className="flex flex-col gap-5 pb-12">
-      {/* Header back button */}
-      <div>
-        <Link
-          href="/dashboard"
-          className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors bg-card px-2.5 py-1 rounded-md border border-border"
-        >
-          <ArrowLeft className="size-3" />
-          {t("contact.backToNetwork")}
+      {/* Breadcrumb */}
+      <div className="flex items-center gap-1.5 text-[11.5px] text-muted-foreground">
+        <Link href="/contacts" className="font-medium hover:text-foreground transition-colors">
+          {t("contact.breadcrumb")}
         </Link>
+        <ChevronRight className="size-3" />
+        <span className="font-medium text-foreground">{contact.fullName}</span>
       </div>
 
-      {/* Identity header — who this contact is, always visible first */}
-      <ContactHeader contact={contact} companies={companies} communities={communities} />
+      {/* One unified card: tinted identity header, then a two-column body —
+          Fields/Summary/Interactions on the left, Relationships on the right. */}
+      <div className="rounded-xl border border-border bg-card overflow-hidden">
+        <ContactHeader contact={contact} companies={companies} communities={communities} />
 
-      {/* Add Note + Interaction Chain — the primary "what's happening with this
-          person" view, placed immediately after identity so it's reachable
-          without scrolling past secondary content on phones. */}
-      <div className="rounded-xl border border-border bg-card p-4 space-y-2.5">
-        <div className="flex items-center gap-1.5 text-xs font-semibold text-foreground uppercase tracking-wider">
-          <Plus className="size-3 text-muted-foreground" />
-          {t("addNote.newNoteTitle")}
+        <div className="grid lg:grid-cols-[1.5fr_1fr]">
+          <div className="flex flex-col gap-5 border-b border-border p-5 lg:border-b-0 lg:border-r">
+            <ContactProfileBody contact={contact} />
+
+            <div className="space-y-2.5">
+              <div className="flex items-center gap-1.5 text-xs font-semibold text-foreground uppercase tracking-wider">
+                <Plus className="size-3 text-muted-foreground" />
+                {t("addNote.newNoteTitle")}
+              </div>
+              <AddNoteForm contactId={contact.id} />
+            </div>
+
+            <div className="space-y-3">
+              <div className="flex items-center gap-1.5 text-xs font-semibold text-foreground uppercase tracking-wider">
+                <History className="size-3.5 text-muted-foreground" />
+                {t("timeline.title")}
+              </div>
+              <TimelineView
+                events={timelineEvents}
+                onlyEntityKey={entityKey({ kind: "contact", contact: contactEntity })}
+                showRangeControl={false}
+              />
+            </div>
+          </div>
+
+          <div className="p-5">
+            <ContactInsightsPanel contact={contact} />
+          </div>
         </div>
-        <AddNoteForm contactId={contact.id} />
       </div>
-
-      <div className="rounded-xl border border-border bg-card p-4 space-y-3">
-        <div className="flex items-center gap-1.5 text-xs font-semibold text-foreground uppercase tracking-wider">
-          <History className="size-3.5 text-muted-foreground" />
-          {t("timeline.title")}
-        </div>
-        <TimelineView
-          events={timelineEvents}
-          onlyEntityKey={entityKey({ kind: "contact", contact: contactEntity })}
-          showRangeControl={false}
-        />
-      </div>
-
-      {/* Secondary: profile insights, connections, and the mini graph */}
-      <ContactInsightsPanel contact={contact} />
 
       <div className="grid gap-5 lg:grid-cols-2">
         <MiniNetworkGraph

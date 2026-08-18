@@ -1,26 +1,30 @@
 import type { Metadata } from "next";
-import { Alegreya, Manrope, JetBrains_Mono } from "next/font/google";
+import { Onest, IBM_Plex_Mono } from "next/font/google";
 import "./globals.css";
 
 import { Toaster } from "@/components/ui/sonner";
 import { I18nProvider } from "@/lib/i18n/context";
 import { getServerTranslation } from "@/lib/i18n/server";
 
-const fontHeading = Alegreya({
+// Weave's reference design uses a single grotesque (Instrument Sans) for both
+// headings and body — Instrument Sans itself has no Cyrillic coverage in
+// next/font/google, so Onest stands in as the closest Cyrillic-safe match.
+const fontHeading = Onest({
   variable: "--font-heading",
   subsets: ["latin", "cyrillic"],
   display: "swap",
 });
 
-const fontSans = Manrope({
+const fontSans = Onest({
   variable: "--font-sans",
   subsets: ["latin", "cyrillic"],
   display: "swap",
 });
 
-const fontMono = JetBrains_Mono({
+const fontMono = IBM_Plex_Mono({
   variable: "--font-mono",
   subsets: ["latin", "cyrillic"],
+  weight: ["400", "500", "600"],
   display: "swap",
 });
 

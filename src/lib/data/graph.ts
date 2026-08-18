@@ -1,3 +1,5 @@
+import { forceSimulation, forceManyBody, forceLink, forceCenter, forceCollide } from "d3-force";
+
 import { prisma } from "@/lib/prisma";
 import type { ContactCategory } from "@/generated/prisma/enums";
 
@@ -17,6 +19,8 @@ export interface GraphContactNode {
   interactionsCount: number;
   lastInteractionAt: string | null;
   connectionsCount: number;
+  x: number;
+  y: number;
 }
 
 export interface GraphCompanyNode {
@@ -26,15 +30,27 @@ export interface GraphCompanyNode {
   industry: string | null;
   description: string | null;
   contactCount: number;
+  x: number;
+  y: number;
 }
 
-export type GraphNode = GraphContactNode | GraphCompanyNode;
+export interface GraphCommunityNode {
+  id: string;
+  nodeType: "community";
+  name: string;
+  description: string | null;
+  contactCount: number;
+  x: number;
+  y: number;
+}
+
+export type GraphNode = GraphContactNode | GraphCompanyNode | GraphCommunityNode;
 
 export interface GraphLink {
   id: string;
   source: string;
   target: string;
-  type: "direct" | "company_hub" | "colleague";
+  type: "direct" | "company_hub" | "colleague" | "community_member";
   relationship: string | null;
   strength: number; // 1-5
   notes: string | null;
@@ -63,8 +79,69 @@ export interface FullGraphData {
   }>;
 }
 
+interface SimNode {
+  id: string;
+  radius: number;
+  x?: number;
+  y?: number;
+}
+
+interface SimLink {
+  source: string;
+  target: string;
+}
+
+/** Runs a force layout to full convergence synchronously (a fixed tick count,
+ * not the timer/rAF-driven `.on("tick", ...)` API) and returns final
+ * positions — this is the ONE place layout is computed. The client never
+ * simulates; it only ever projects these positions into its viewport, which
+ * is what makes resizing cheap and keeps mobile from paying for a continuous
+ * physics loop. Degree-scaled charge/link-distance/collision keeps
+ * high-connection hub nodes from being crowded by their many neighbors. */
+function computeLayout(
+  nodes: GraphNode[],
+  links: GraphLink[],
+  degreeMap: Map<string, number>,
+): Map<string, { x: number; y: number }> {
+  const simNodes: SimNode[] = nodes.map((n) => ({
+    id: n.id,
+    radius: n.nodeType === "company" || n.nodeType === "community" ? 18 : 14,
+  }));
+  // Fresh copies — forceLink() mutates .source/.target from ids into node
+  // object references, which would corrupt the real GraphLink[] we return.
+  const simLinks: SimLink[] = links.map((l) => ({ source: l.source, target: l.target }));
+
+  const degreeOf = (id: string) => degreeMap.get(id) ?? 0;
+
+  const simulation = forceSimulation(simNodes)
+    .force(
+      "charge",
+      forceManyBody().strength((d) => -120 - degreeOf((d as SimNode).id) * 25),
+    )
+    .force(
+      "link",
+      forceLink(simLinks)
+        .id((d) => (d as SimNode).id)
+        .distance((l) => {
+          const source = l.source as unknown as SimNode;
+          const target = l.target as unknown as SimNode;
+          return 90 + (degreeOf(source.id) + degreeOf(target.id)) * 5;
+        }),
+    )
+    .force("center", forceCenter(0, 0))
+    .force(
+      "collide",
+      forceCollide((d) => (d as SimNode).radius + 10),
+    )
+    .stop();
+
+  for (let i = 0; i < 300; i++) simulation.tick();
+
+  return new Map(simNodes.map((n) => [n.id, { x: n.x ?? 0, y: n.y ?? 0 }]));
+}
+
 export async function getGraphData(userId: string): Promise<FullGraphData> {
-  const [contacts, companies, explicitConnections] = await Promise.all([
+  const [contacts, companies, communities, explicitConnections] = await Promise.all([
     prisma.contact.findMany({
       where: { userId },
       include: {
@@ -83,6 +160,15 @@ export async function getGraphData(userId: string): Promise<FullGraphData> {
       orderBy: { fullName: "asc" },
     }),
     prisma.company.findMany({
+      where: { userId },
+      include: {
+        contacts: {
+          select: { id: true, fullName: true, role: true, category: true },
+        },
+      },
+      orderBy: { name: "asc" },
+    }),
+    prisma.community.findMany({
       where: { userId },
       include: {
         contacts: {
@@ -140,6 +226,8 @@ export async function getGraphData(userId: string): Promise<FullGraphData> {
       interactionsCount: c.interactions.length,
       lastInteractionAt: c.interactions[0]?.createdAt.toISOString() || null,
       connectionsCount: connCount,
+      x: 0,
+      y: 0,
     });
   }
 
@@ -154,6 +242,8 @@ export async function getGraphData(userId: string): Promise<FullGraphData> {
         industry: comp.industry,
         description: comp.description,
         contactCount: comp.contacts.length,
+        x: 0,
+        y: 0,
       });
 
       // Link contacts to Company Hub
@@ -200,6 +290,40 @@ export async function getGraphData(userId: string): Promise<FullGraphData> {
     }
   }
 
+  // 2b. Add Community Hub Nodes
+  for (const community of communities) {
+    if (community.contacts.length > 0) {
+      const communityNodeId = `community_${community.id}`;
+      nodes.push({
+        id: communityNodeId,
+        nodeType: "community",
+        name: community.name,
+        description: community.description,
+        contactCount: community.contacts.length,
+        x: 0,
+        y: 0,
+      });
+
+      for (const member of community.contacts) {
+        const linkId = `community_hub_${communityNodeId}_${member.id}`;
+        if (!linkIdSet.has(linkId)) {
+          linkIdSet.add(linkId);
+          links.push({
+            id: linkId,
+            source: communityNodeId,
+            target: member.id,
+            type: "community_member",
+            relationship: "Спільнота",
+            strength: 2,
+            notes: community.name,
+          });
+          degreeMap.set(member.id, (degreeMap.get(member.id) || 0) + 1);
+          degreeMap.set(communityNodeId, (degreeMap.get(communityNodeId) || 0) + 1);
+        }
+      }
+    }
+  }
+
   // 3. Add Explicit Contact-to-Contact Connections
   for (const conn of explicitConnections) {
     const pairId = [conn.fromContactId, conn.toContactId].sort().join("_");
@@ -217,6 +341,19 @@ export async function getGraphData(userId: string): Promise<FullGraphData> {
       });
       degreeMap.set(conn.fromContactId, (degreeMap.get(conn.fromContactId) || 0) + 2);
       degreeMap.set(conn.toContactId, (degreeMap.get(conn.toContactId) || 0) + 2);
+    }
+  }
+
+  // Layout is computed once, here, server-side — the client only ever
+  // renders these positions, it never runs its own simulation. Degree-scaled
+  // charge/link-distance/collision keeps high-degree hubs from collapsing
+  // into their neighbors the way a flat, un-scaled simulation would.
+  const nodesById = new Map(nodes.map((n) => [n.id, n]));
+  for (const [id, { x, y }] of computeLayout(nodes, links, degreeMap)) {
+    const node = nodesById.get(id);
+    if (node) {
+      node.x = x;
+      node.y = y;
     }
   }
 

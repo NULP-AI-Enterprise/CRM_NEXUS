@@ -9,6 +9,7 @@ const logInteractionSchema = z.object({
   rawText: z.string().trim().min(1).max(8000),
   followUp: z.string().trim().max(2000).nullish(),
   followUpDate: z.string().date().nullish(),
+  parentInteractionId: z.string().min(1).nullish(),
 });
 
 type RouteContext = { params: Promise<{ id: string }> };
@@ -45,13 +46,26 @@ export async function POST(request: Request, { params }: RouteContext) {
     );
   }
 
+  // A branch's parent just has to be one of the user's own interactions, not
+  // necessarily on this same connection — that's what lets a provenance
+  // chain cross entities (X introduces Y; Y's first event branches off X's).
+  let validParentId: string | null = null;
+  if (parsed.data.parentInteractionId) {
+    const parent = await prisma.interaction.findFirst({
+      where: { id: parsed.data.parentInteractionId, OR: [{ contact: { userId: session.user.id } }, { connection: { userId: session.user.id } }] },
+      select: { id: true },
+    });
+    validParentId = parent?.id ?? null;
+  }
+
   const interaction = await prisma.interaction.create({
     data: {
       connectionId: connection.id,
-      type: "NOTE",
+      type: "MEMO",
       rawText: parsed.data.rawText,
       followUp: parsed.data.followUp || null,
       followUpDate: parsed.data.followUpDate ? new Date(parsed.data.followUpDate) : null,
+      parentInteractionId: validParentId,
     },
   });
 

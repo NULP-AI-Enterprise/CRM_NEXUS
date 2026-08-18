@@ -26,6 +26,7 @@ model User {
   communities         Community[]
   verificationTokens  EmailVerificationToken[]
   passwordResetTokens PasswordResetToken[]
+  apiKeys             ApiKey[]
 }
 
 /// Single-use token emailed to a user to confirm ownership of their address.
@@ -47,6 +48,37 @@ model PasswordResetToken {
   token     String   @unique
   expiresAt DateTime
   createdAt DateTime @default(now())
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+enum ApiKeyScope {
+  READ
+  READ_WRITE
+}
+
+/// A user-generated credential for the MCP server (src/app/api/mcp/route.ts),
+/// letting an external AI assistant (Claude/ChatGPT/Gemini) act as this user
+/// over MCP without a browser session. Only the hash is ever stored — the raw
+/// key is shown once, at creation. `redactSensitive` strips PII-ish fields
+/// (contact phone/socials/location, AI-derived character judgments, raw
+/// interaction text) from tool results when true; `scope` gates whether
+/// write tools are usable at all. Never manageable via MCP itself — only
+/// through the session-authenticated settings page.
+model ApiKey {
+  id              String      @id @default(cuid())
+  name            String
+  keyHash         String      @unique
+  keyPreview      String
+  scope           ApiKeyScope @default(READ)
+  redactSensitive Boolean     @default(true)
+  expiresAt       DateTime?
+  lastUsedAt      DateTime?
+  revokedAt       DateTime?
+  createdAt       DateTime    @default(now())
 
   userId String
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -165,11 +197,12 @@ model ContactConnection {
 }
 
 enum InteractionType {
+  MEETING
   CALL
-  MEET
-  ZOOM
-  OFFLINE
-  NOTE
+  INTRO
+  EMAIL
+  WORKSHOP
+  MEMO
 }
 
 /// A single logged, dated event belonging to either a Contact (an interaction
@@ -178,7 +211,7 @@ enum InteractionType {
 /// contactId/connectionId is set — enforced in application code, not the DB.
 model Interaction {
   id           String          @id @default(cuid())
-  type         InteractionType @default(NOTE)
+  type         InteractionType @default(MEMO)
   rawText      String          @db.Text
   /// Next step / commitment extracted from rawText, if this note mentions one
   /// (e.g. "Wednesday: talk to the academy owner"). Null when none is found.
@@ -194,7 +227,36 @@ model Interaction {
   connectionId String?
   connection   ContactConnection? @relation(fields: [connectionId], references: [id], onDelete: Cascade)
 
+  /// A branch off an existing event (the user's own v1 -> hotfix -> v2
+  /// language) — null means this interaction lives on the entity's/cluster's
+  /// main line. Self-relation, one level deep by convention (not enforced by
+  /// the schema): a branch's own children collapse onto it in the UI rather
+  /// than nesting further, since every real example given was one level.
+  parentInteractionId String?
+  parent               Interaction?  @relation("InteractionBranches", fields: [parentInteractionId], references: [id], onDelete: Cascade)
+  children             Interaction[] @relation("InteractionBranches")
+
   @@index([contactId])
   @@index([connectionId])
+  @@index([createdAt])
+  @@index([parentInteractionId])
+}
+
+/// Write-only trail of admin actions taken against another user's data.
+/// Deliberately has no FK relation to User: an audit record should outlive
+/// the account it describes, not cascade-delete alongside it. No viewer UI
+/// yet (query via Prisma Studio) — reads are excluded on purpose, to avoid
+/// pure noise; only writes are logged.
+model AdminAuditLog {
+  id           String   @id @default(cuid())
+  adminUserId  String
+  targetUserId String
+  entityType   String
+  entityId     String
+  action       String
+  createdAt    DateTime @default(now())
+
+  @@index([adminUserId])
+  @@index([targetUserId])
   @@index([createdAt])
 }

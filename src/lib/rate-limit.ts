@@ -31,6 +31,9 @@ export const RATE_LIMITS = {
   authResendVerificationPerEmail: { limit: 5, windowMs: 60 * 60 * 1000 },
   aiProcessInteraction: { limit: 20, windowMs: 10 * 60 * 1000 },
   apiGeneral: { limit: 120, windowMs: 60 * 1000 },
+  mcpToolCall: { limit: 60, windowMs: 60 * 1000 },
+  adminRead: { limit: 120, windowMs: 60 * 1000 },
+  adminWrite: { limit: 30, windowMs: 60 * 1000 },
 } as const;
 
 export type RateLimitName = keyof typeof RATE_LIMITS;

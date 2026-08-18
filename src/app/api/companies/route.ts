@@ -1,15 +1,9 @@
 import { NextResponse } from "next/server";
-import { z } from "zod";
 
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { checkRateLimit, getClientIp, rateLimitedResponse } from "@/lib/rate-limit";
-
-const companyInputSchema = z.object({
-  name: z.string().trim().min(1).max(200),
-  industry: z.string().trim().max(200).nullish(),
-  description: z.string().trim().max(2000).nullish(),
-});
+import { companyInputSchema } from "@/lib/validation/company";
 
 export async function POST(request: Request) {
   const rl = checkRateLimit("apiGeneral", getClientIp(request.headers));

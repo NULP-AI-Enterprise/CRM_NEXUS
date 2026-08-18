@@ -16,6 +16,9 @@ export interface TimelineEvent {
   followUp: string | null;
   followUpDate: string | null;
   createdAt: string;
+  /** Null when this event lives on the main line; otherwise the id of the
+   * event it branches off of. */
+  parentInteractionId: string | null;
   entity: TimelineEntity;
 }
 
@@ -29,4 +32,19 @@ export function entityLabel(entity: TimelineEntity): string {
   return entity.kind === "contact"
     ? entity.contact.fullName
     : `${entity.fromContact.fullName} ↔ ${entity.toContact.fullName}`;
+}
+
+/** Events with a future follow-up date, soonest first. */
+export function getUpcomingFollowUps(events: TimelineEvent[]): TimelineEvent[] {
+  const now = Date.now();
+  return events
+    .filter((e) => e.followUpDate && new Date(e.followUpDate).getTime() > now)
+    .sort((a, b) => new Date(a.followUpDate!).getTime() - new Date(b.followUpDate!).getTime());
+}
+
+/** Current time as an ISO string, resolved once on the server and passed down
+ * as data — keeps client components from calling `new Date()` in their render
+ * body, which React's exhaustive-purity lint (correctly) flags. */
+export function nowIso(): string {
+  return new Date().toISOString();
 }

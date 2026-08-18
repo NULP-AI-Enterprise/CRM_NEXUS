@@ -8,11 +8,13 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { VoiceInputButton } from "@/components/quick-add/voice-input-button";
+import { BranchParentPicker } from "@/components/timeline/branch-parent-picker";
 import { useTranslation } from "@/lib/i18n/context";
 
 export function AddNoteForm({ contactId }: { contactId: string }) {
   const { t } = useTranslation();
   const [text, setText] = useState("");
+  const [parentInteractionId, setParentInteractionId] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const router = useRouter();
 
@@ -32,7 +34,7 @@ export function AddNoteForm({ contactId }: { contactId: string }) {
         const res = await fetch("/api/process-interaction", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ rawText, contactId }),
+          body: JSON.stringify({ rawText, contactId, parentInteractionId }),
         });
         const data = await res.json();
         if (!res.ok) {
@@ -40,6 +42,7 @@ export function AddNoteForm({ contactId }: { contactId: string }) {
         }
         toast.success(t("addNote.savedToast"));
         setText("");
+        setParentInteractionId(null);
         router.refresh();
       } catch (err) {
         toast.error(err instanceof Error ? err.message : t("addNote.processError"));
@@ -61,7 +64,8 @@ export function AddNoteForm({ contactId }: { contactId: string }) {
           <VoiceInputButton onTranscript={handleTranscript} disabled={isPending} />
         </div>
       </div>
-      <div className="flex justify-end">
+      <div className="flex items-center justify-between gap-2">
+        <BranchParentPicker value={parentInteractionId} onChange={setParentInteractionId} />
         <Button
           onClick={handleSubmit}
           disabled={isPending || !text.trim()}

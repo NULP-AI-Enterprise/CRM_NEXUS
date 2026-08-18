@@ -51,3 +51,6 @@ k8s/secret.yaml
 
 # Claude Code agent worktrees (scratch, never intended to be committed)
 .claude/worktrees/
+
+# Project summary
+project_summary.md

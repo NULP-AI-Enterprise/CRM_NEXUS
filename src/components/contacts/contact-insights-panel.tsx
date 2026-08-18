@@ -3,11 +3,12 @@
 import { useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Brain, Sparkles, Link2, Trash2, Plus, ExternalLink, Target, MessageSquare, UsersRound } from "lucide-react";
+import { Link2, Trash2, Plus, ExternalLink, UsersRound, Star } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { EntityIconBadge } from "@/components/dashboard/entity-card";
 import { initials } from "@/lib/contact-display";
 import { useTranslation } from "@/lib/i18n/context";
 import type { CompanyModel, ContactModel, ContactConnectionModel } from "@/generated/prisma/models";
@@ -35,6 +36,7 @@ export function ContactInsightsPanel({ contact }: { contact: ContactDetailType }
   const router = useRouter();
   const [isConnectOpen, setIsConnectOpen] = useState(false);
   const [isDeleting, startDeleteTransition] = useTransition();
+  const [expandedConnectionId, setExpandedConnectionId] = useState<string | null>(null);
 
   // Flatten all connections
   const directConnections = [
@@ -90,56 +92,9 @@ export function ContactInsightsPanel({ contact }: { contact: ContactDetailType }
         </div>
       )}
 
-      {/* Strategic Profile Matrix */}
-      <div className="grid gap-3 sm:grid-cols-3">
-        {/* Card 1: Temperament */}
-        <div className="rounded-xl border border-border bg-card p-4 space-y-1.5">
-          <div className="flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground uppercase tracking-wider">
-            <Brain className="size-3.5 text-muted-foreground" />
-            {t("contact.temperament")}
-          </div>
-          <p className="text-xs text-foreground leading-relaxed">
-            {contact.temperament || t("contact.temperamentEmpty")}
-          </p>
-        </div>
-
-        {/* Card 2: Needs */}
-        <div className="rounded-xl border border-border bg-card p-4 space-y-1.5">
-          <div className="flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground uppercase tracking-wider">
-            <Target className="size-3.5 text-muted-foreground" />
-            {t("contact.needs")}
-          </div>
-          <p className="text-xs text-foreground leading-relaxed">
-            {contact.needs || t("contact.needsEmpty")}
-          </p>
-        </div>
-
-        {/* Card 3: Value Potential */}
-        <div className="rounded-xl border border-border bg-card p-4 space-y-1.5">
-          <div className="flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground uppercase tracking-wider">
-            <Sparkles className="size-3.5 text-muted-foreground" />
-            {t("contact.valuePotential")}
-          </div>
-          <p className="text-xs text-foreground leading-relaxed">
-            {contact.valuePotential || t("contact.valuePotentialEmpty")}
-          </p>
-        </div>
-      </div>
-
-      {/* Full AI Summary */}
-      {contact.fullSummary && (
-        <div className="rounded-xl border border-border bg-card p-4 space-y-1.5">
-          <div className="flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground uppercase tracking-wider">
-            <MessageSquare className="size-3.5 text-muted-foreground" />
-            {t("contact.fullSummary")}
-          </div>
-          <p className="text-xs leading-relaxed text-foreground/90 whitespace-pre-wrap">
-            {contact.fullSummary}
-          </p>
-        </div>
-      )}
-
-      {/* Direct Network Connections Manager */}
+      {/* Direct Network Connections Manager — the "Relationships" column,
+          matching Weave's detail-page anatomy. Temperament/needs/valuePotential/
+          fullSummary render in ContactProfileBody (the left column) instead. */}
       <div className="rounded-xl border border-border bg-card p-4 space-y-3.5">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -169,54 +124,90 @@ export function ContactInsightsPanel({ contact }: { contact: ContactDetailType }
           <div className="grid gap-2 sm:grid-cols-2">
             {directConnections.map((conn) => {
               const peer = conn.peer!;
+              const hasExpandableContent = conn.strength != null || Boolean(conn.notes);
+              const isExpanded = expandedConnectionId === conn.id;
 
               return (
                 <div
                   key={conn.id}
-                  className="flex items-center justify-between rounded-lg border border-border bg-muted/60 p-2.5 text-xs transition-colors hover:bg-muted"
+                  onClick={
+                    hasExpandableContent
+                      ? () => setExpandedConnectionId(isExpanded ? null : conn.id)
+                      : undefined
+                  }
+                  className={`group relative flex flex-col gap-2 rounded-lg border border-border bg-muted/60 p-2.5 text-xs transition-colors hover:bg-muted ${hasExpandableContent ? "cursor-pointer" : ""}`}
                 >
-                  <div className="flex items-center gap-2.5 min-w-0">
-                    <Avatar className="size-7 shrink-0 bg-secondary">
-                      <AvatarFallback className="text-[10px] font-medium bg-secondary text-secondary-foreground">
-                        {initials(peer.fullName)}
-                      </AvatarFallback>
-                    </Avatar>
-
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-1.5">
-                        <Link
-                          href={`/contacts/${peer.id}`}
-                          className="font-medium text-foreground hover:underline truncate text-xs"
-                        >
-                          {peer.fullName}
-                        </Link>
-                        <span className="text-[10px] text-muted-foreground rounded bg-card px-1 py-0.2 border border-border">
-                          {conn.relationship || t("contact.defaultRelationship")}
-                        </span>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <div className="relative shrink-0">
+                        <Avatar className="size-7 bg-secondary">
+                          <AvatarFallback className="text-[10px] font-medium bg-secondary text-secondary-foreground">
+                            {initials(peer.fullName)}
+                          </AvatarFallback>
+                        </Avatar>
+                        <EntityIconBadge
+                          icon={Link2}
+                          className="absolute -bottom-1 -right-1 size-3.5 rounded-full border-2 border-card bg-secondary p-0 [&>svg]:size-2"
+                        />
                       </div>
-                      <p className="text-muted-foreground text-[11px] truncate">
-                        {peer.role || peer.companyName || t("contact.defaultRole")}
-                      </p>
+
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-1.5">
+                          <Link
+                            href={`/contacts/${peer.id}`}
+                            onClick={(e) => e.stopPropagation()}
+                            className="relative z-10 font-medium text-foreground hover:underline truncate text-xs"
+                          >
+                            {peer.fullName}
+                          </Link>
+                          <span className="text-[10px] text-muted-foreground rounded bg-card px-1 py-0.2 border border-border">
+                            {conn.relationship || t("contact.defaultRelationship")}
+                          </span>
+                        </div>
+                        <p className="text-muted-foreground text-[11px] truncate">
+                          {peer.role || peer.companyName || t("contact.defaultRole")}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-1 shrink-0 ml-2 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
+                      <Link
+                        href={`/contacts/${peer.id}`}
+                        onClick={(e) => e.stopPropagation()}
+                        className="relative z-10 p-1 text-muted-foreground hover:text-foreground rounded"
+                        title={t("contact.viewProfile")}
+                      >
+                        <ExternalLink className="size-3" />
+                      </Link>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDeleteConnection(conn.id);
+                        }}
+                        disabled={isDeleting}
+                        className="relative z-10 p-1 text-muted-foreground hover:text-destructive rounded transition-colors"
+                        title={t("contact.removeConnection")}
+                      >
+                        <Trash2 className="size-3" />
+                      </button>
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-1 shrink-0 ml-2">
-                    <Link
-                      href={`/contacts/${peer.id}`}
-                      className="p-1 text-muted-foreground hover:text-foreground rounded"
-                      title={t("contact.viewProfile")}
-                    >
-                      <ExternalLink className="size-3" />
-                    </Link>
-                    <button
-                      onClick={() => handleDeleteConnection(conn.id)}
-                      disabled={isDeleting}
-                      className="p-1 text-muted-foreground hover:text-destructive rounded transition-colors"
-                      title={t("contact.removeConnection")}
-                    >
-                      <Trash2 className="size-3" />
-                    </button>
-                  </div>
+                  {isExpanded && (
+                    <div className="space-y-1.5 border-t border-border pt-2">
+                      {conn.strength != null && (
+                        <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                          <Star className="size-3 fill-muted-foreground" />
+                          {t("connection.strength")}: {conn.strength}/5
+                        </div>
+                      )}
+                      {conn.notes && (
+                        <p className="text-[11px] leading-relaxed text-foreground/90 whitespace-pre-wrap">
+                          {conn.notes}
+                        </p>
+                      )}
+                    </div>
+                  )}
                 </div>
               );
             })}

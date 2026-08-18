@@ -4,6 +4,19 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* A real named breakpoint rather than an inline `min-[1300px]:` variant, and
+   declared in rem rather than px on purpose. Tailwind v4 groups min-width
+   media queries by unit before it sorts them by value, so ANY px-valued
+   breakpoint — arbitrary or named — is emitted ahead of the rem-based default
+   scale and therefore loses to a later `md:`/`lg:` rule no matter how much
+   larger its threshold is. In rem it sorts into the same group, landing
+   between xl (80rem) and 2xl (96rem) where it belongs.
+   81.25rem = 1300px: where the History graph's third column fits
+   (240 sidebar + 240 list + ~500 canvas + 314 panel). */
+@theme {
+  --breakpoint-wide: 81.25rem;
+}
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -49,33 +62,38 @@
 }
 
 :root {
-  --background: #fbf7f1;
-  --foreground: #241d15;
+  --background: #f6f6f4;
+  --foreground: #1b1d21;
   --card: #ffffff;
-  --card-foreground: #241d15;
+  --card-foreground: #1b1d21;
   --popover: #ffffff;
-  --popover-foreground: #241d15;
-  --primary: #241d15;
-  --primary-foreground: #fbf7f1;
-  --secondary: #ede4d6;
-  --secondary-foreground: #241d15;
-  --muted: #f1eae0;
-  --muted-foreground: #7a6f5f;
-  --accent: #b8583e;
+  --popover-foreground: #1b1d21;
+  --primary: #1b1d21;
+  --primary-foreground: #ffffff;
+  --secondary: #f1f0ec;
+  --secondary-foreground: #1b1d21;
+  --muted: #f4f4f1;
+  --muted-foreground: #9a9a94;
+  --accent: #5b8def;
   --accent-foreground: #ffffff;
-  --destructive: #c0392b;
-  --border: rgba(36, 29, 21, 0.1);
-  --input: rgba(36, 29, 21, 0.14);
-  --ring: #b8583e;
-  --radius: 0.5rem;
-  --sidebar: #fbf7f1;
-  --sidebar-foreground: #241d15;
-  --sidebar-primary: #241d15;
-  --sidebar-primary-foreground: #fbf7f1;
-  --sidebar-accent: #ede4d6;
-  --sidebar-accent-foreground: #241d15;
-  --sidebar-border: rgba(36, 29, 21, 0.1);
-  --sidebar-ring: #b8583e;
+  --destructive: #de5b4a;
+  --border: #ecebe7;
+  --input: #e4e3de;
+  --ring: #5b8def;
+  --radius: 0.625rem;
+  --sidebar: #ffffff;
+  --sidebar-foreground: #3a3c42;
+  --sidebar-primary: #1b1d21;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #f1f1ed;
+  --sidebar-accent-foreground: #1b1d21;
+  --sidebar-border: #ecebe7;
+  --sidebar-ring: #5b8def;
+  --chart-1: #5b8def;
+  --chart-2: #43a883;
+  --chart-3: #ef8163;
+  --chart-4: #9b7be0;
+  --chart-5: #e9a15f;
 }
 
 .dark {
@@ -127,11 +145,11 @@
   }
 }
 
-/* Warm Paper — clean cards, one soft shadow, no glow */
+/* Weave — quiet neutral surface, subtle shadows, bright accent dots */
 .glass-panel {
   background: var(--card);
   border: 1px solid var(--border);
-  box-shadow: 0 4px 20px -4px rgba(36, 29, 21, 0.08);
+  box-shadow: 0 6px 18px rgba(27, 29, 33, 0.07);
 }
 
 .glass-card {
@@ -142,13 +160,23 @@
 
 .glass-card:hover {
   background: var(--muted);
-  border-color: rgba(36, 29, 21, 0.16);
+  border-color: var(--input);
+}
+
+/* Every existing card already pairs these two utilities — a plain
+ * compound-class rule applies the shadow app-wide with no per-component edits. */
+.border-border.bg-card {
+  box-shadow: 0 1px 2px rgba(27, 29, 33, 0.04);
+  transition: box-shadow 0.15s ease;
+}
+.border-border.bg-card:hover {
+  box-shadow: 0 1px 2px rgba(27, 29, 33, 0.04), 0 6px 18px rgba(27, 29, 33, 0.07);
 }
 
 /* Warm dot grid for the graph canvas */
 .graph-canvas-bg {
   background-color: var(--background);
-  background-image: radial-gradient(rgba(36, 29, 21, 0.1) 1px, transparent 1px);
+  background-image: radial-gradient(rgba(27, 29, 33, 0.1) 1px, transparent 1px);
   background-size: 24px 24px;
 }
 
@@ -166,9 +194,9 @@
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: rgba(36, 29, 21, 0.15);
+  background: rgba(27, 29, 33, 0.15);
   border-radius: 9999px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(36, 29, 21, 0.28);
+  background: rgba(27, 29, 33, 0.28);
 }

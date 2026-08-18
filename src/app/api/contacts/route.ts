@@ -1,30 +1,10 @@
 import { NextResponse } from "next/server";
-import { z } from "zod";
 
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { ContactCategory } from "@/generated/prisma/enums";
 import { checkRateLimit, getClientIp, rateLimitedResponse } from "@/lib/rate-limit";
-
-const contactInputSchema = z.object({
-  fullName: z.string().trim().min(1).max(200),
-  role: z.string().trim().max(200).nullish(),
-  companyId: z.string().min(1).nullish(),
-  category: z.nativeEnum(ContactCategory).optional(),
-  usefulnessScore: z.number().int().min(1).max(10).nullish(),
-  phone: z.string().trim().max(50).nullish(),
-  linkedin: z.string().trim().max(300).nullish(),
-  telegram: z.string().trim().max(100).nullish(),
-  instagram: z.string().trim().max(100).nullish(),
-  whatsapp: z.string().trim().max(50).nullish(),
-  city: z.string().trim().max(150).nullish(),
-  country: z.string().trim().max(150).nullish(),
-  temperament: z.string().trim().max(2000).nullish(),
-  needs: z.string().trim().max(2000).nullish(),
-  valuePotential: z.string().trim().max(2000).nullish(),
-  fullSummary: z.string().trim().max(5000).nullish(),
-  communityIds: z.array(z.string().min(1)).optional(),
-});
+import { contactInputSchema } from "@/lib/validation/contact";
 
 export async function POST(request: Request) {
   const rl = checkRateLimit("apiGeneral", getClientIp(request.headers));
