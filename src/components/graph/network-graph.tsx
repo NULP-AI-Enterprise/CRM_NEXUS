@@ -97,6 +97,13 @@ export function NetworkGraph({ initialData }: NetworkGraphProps) {
   /** Live pointers by id — the second entry is what turns a drag into a pinch. */
   const pointersRef = useRef<Map<number, { x: number; y: number }>>(new Map());
   const pinchRef = useRef<{ dist: number; zoom: number } | null>(null);
+  /** Set when a pinch ends by lifting one of ≥2 fingers; consumed by the very
+   * next pointerup. Without it, that event — the surviving finger's own
+   * liftoff — gets its tap distance measured against `dragRef`'s start
+   * position, which is still wherever the *other*, already-lifted finger
+   * first touched down, so a pinch could spuriously register as a tap that
+   * selects or deselects a node. */
+  const suppressNextTapRef = useRef(false);
   const dragRef = useRef<{
     isDragging: boolean;
     draggedNode: SimNode | null;
@@ -1045,6 +1052,7 @@ export function NetworkGraph({ initialData }: NetworkGraphProps) {
       dragRef.current.isDragging = false;
       dragRef.current.draggedNode = null;
       dragRef.current.isPanning = false;
+      suppressNextTapRef.current = true;
       return;
     }
     // Touch has no hover state to leave behind, so clear any stale tooltip.
@@ -1058,7 +1066,9 @@ export function NetworkGraph({ initialData }: NetworkGraphProps) {
       clientY - dragRef.current.startY
     );
 
-    if (dragDist < 6) {
+    if (suppressNextTapRef.current) {
+      suppressNextTapRef.current = false;
+    } else if (dragDist < 6) {
       const clickedNode = getNodeAtPoint(clientX, clientY);
       if (clickedNode) {
         setSelectedNode(clickedNode);
@@ -1096,23 +1106,35 @@ export function NetworkGraph({ initialData }: NetworkGraphProps) {
     }
   };
 
-  const handleWheel = (e: React.WheelEvent<HTMLCanvasElement>) => {
-    e.preventDefault();
-    const rect = canvasRef.current?.getBoundingClientRect();
-    if (!rect) return;
-    const clientX = e.clientX - rect.left;
-    const clientY = e.clientY - rect.top;
+  // A native, explicitly non-passive listener: React attaches its synthetic
+  // `onWheel` the same way the browser defaults touch listeners — passive —
+  // so `e.preventDefault()` through a JSX `onWheel` prop is a silent no-op
+  // and the page scrolls right along with the graph zoom. Only a manual
+  // `addEventListener(..., { passive: false })` can actually stop that.
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
 
-    const zoomFactor = e.deltaY < 0 ? 1.15 : 0.87;
-    const newZoom = Math.min(3.5, Math.max(0.25, cameraRef.current.zoom * zoomFactor));
+    const onWheel = (e: WheelEvent) => {
+      e.preventDefault();
+      const rect = canvas.getBoundingClientRect();
+      const clientX = e.clientX - rect.left;
+      const clientY = e.clientY - rect.top;
 
-    const worldBefore = screenToWorld(clientX, clientY);
-    cameraRef.current.zoom = newZoom;
-    cameraRef.current.x = clientX - worldBefore.x * newZoom;
-    cameraRef.current.y = clientY - worldBefore.y * newZoom;
-    targetCameraRef.current = null;
-    hasManualCameraRef.current = true;
-  };
+      const zoomFactor = e.deltaY < 0 ? 1.15 : 0.87;
+      const newZoom = Math.min(3.5, Math.max(0.25, cameraRef.current.zoom * zoomFactor));
+
+      const worldBefore = screenToWorld(clientX, clientY);
+      cameraRef.current.zoom = newZoom;
+      cameraRef.current.x = clientX - worldBefore.x * newZoom;
+      cameraRef.current.y = clientY - worldBefore.y * newZoom;
+      targetCameraRef.current = null;
+      hasManualCameraRef.current = true;
+    };
+
+    canvas.addEventListener("wheel", onWheel, { passive: false });
+    return () => canvas.removeEventListener("wheel", onWheel);
+  }, [screenToWorld]);
 
   const handleZoom = (direction: "in" | "out") => {
     if (!containerRef.current) return;
@@ -1183,7 +1205,6 @@ export function NetworkGraph({ initialData }: NetworkGraphProps) {
         onPointerCancel={handlePointerUp}
         onPointerLeave={handlePointerLeave}
         onDoubleClick={handleDoubleClick}
-        onWheel={handleWheel}
         className="block size-full touch-none cursor-grab active:cursor-grabbing"
       />
 

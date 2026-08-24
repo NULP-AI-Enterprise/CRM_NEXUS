@@ -42,6 +42,8 @@ export const dictionary = {
   "nav.followUps": { en: "Follow-ups", uk: "Нагадування" },
   "nav.openMenu": { en: "Open menu", uk: "Відкрити меню" },
   "nav.closeMenu": { en: "Close menu", uk: "Закрити меню" },
+  "nav.brandKicker": { en: "Network CRM", uk: "Мережевий CRM" },
+  "nav.myNetwork": { en: "my network", uk: "моя мережа" },
 
   // ---- auth: login ----
   "auth.login.title": { en: "Sign in", uk: "Вхід" },
@@ -169,6 +171,9 @@ export const dictionary = {
   "dashboard.feed.mostActive": { en: "Most active relationships", uk: "Найактивніші зв'язки" },
   "dashboard.feed.empty": { en: "Nothing logged yet.", uk: "Поки що нічого не записано." },
   "dashboard.overviewHeading": { en: "Your network at a glance", uk: "Ваша мережа одним поглядом" },
+  "dashboard.newEntity": { en: "+ New entity", uk: "+ Нова сутність" },
+  "dashboard.openGraph": { en: "Open graph", uk: "Відкрити граф" },
+  "dashboard.stat.staleDelta": { en: "quiet 90+ days", uk: "тиша 90+ днів" },
   "dashboard.networkPreview.title": { en: "Network map", uk: "Карта зв'язків" },
   "dashboard.networkPreview.subtitle": { en: "your most-connected people", uk: "найзв'язаніші люди" },
   "dashboard.networkPreview.you": { en: "You", uk: "Ви" },
@@ -178,7 +183,7 @@ export const dictionary = {
   "dashboard.tab.companies": { en: "Companies", uk: "Компанії" },
   "dashboard.tab.communities": { en: "Communities", uk: "Спільноти" },
   "dashboard.tab.contacts": { en: "People", uk: "Люди" },
-  "dashboard.tab.timeline": { en: "Timeline", uk: "Timeline" },
+  "dashboard.tab.timeline": { en: "Timeline", uk: "Історія взаємодій" },
   "dashboard.newContact": { en: "New contact", uk: "Новий контакт" },
   "dashboard.newCompany": { en: "New company", uk: "Нова компанія" },
   "dashboard.newCommunity": { en: "New community", uk: "Нова спільнота" },
@@ -210,6 +215,17 @@ export const dictionary = {
     uk: "Видалити {name}? Контакти збережуть історію, але втратять зв'язок із компанією.",
   },
   "company.delete.success": { en: "Company deleted", uk: "Компанію видалено" },
+  "company.detail.viewDetails": { en: "View details", uk: "Детальніше" },
+  "company.detail.members": { en: "People", uk: "Люди" },
+  "company.detail.connections": { en: "Connections among them", uk: "Зв'язків між ними" },
+  "company.detail.interactions": { en: "Interactions logged", uk: "Записаних взаємодій" },
+  "company.detail.mostActive": { en: "Most active", uk: "Найактивніший" },
+  "company.detail.graphTitle": { en: "People graph", uk: "Граф людей" },
+  "company.detail.graphEmpty": { en: "No connections between them yet.", uk: "Поки немає зв'язків між ними." },
+  "company.detail.memberList": { en: "All people", uk: "Усі люди" },
+  "company.detail.noInteractions": { en: "No interactions logged", uk: "Немає записаних взаємодій" },
+  "company.detail.lastActive": { en: "last active", uk: "остання активність" },
+  "company.detail.loadError": { en: "Couldn't load company details.", uk: "Не вдалося завантажити деталі компанії." },
 
   // ---- communities ----
   "community.empty": {
@@ -239,6 +255,17 @@ export const dictionary = {
     uk: "Видалити {name}? Контакти збережуть історію, але втратять зв'язок із цією спільнотою.",
   },
   "community.delete.success": { en: "Community deleted", uk: "Спільноту видалено" },
+  "community.detail.viewDetails": { en: "View details", uk: "Детальніше" },
+  "community.detail.members": { en: "Members", uk: "Учасники" },
+  "community.detail.connections": { en: "Connections among members", uk: "Зв'язків між учасниками" },
+  "community.detail.interactions": { en: "Interactions logged", uk: "Записаних взаємодій" },
+  "community.detail.mostActive": { en: "Most active", uk: "Найактивніший" },
+  "community.detail.graphTitle": { en: "Member graph", uk: "Граф учасників" },
+  "community.detail.graphEmpty": { en: "No connections between members yet.", uk: "Поки немає зв'язків між учасниками." },
+  "community.detail.memberList": { en: "All members", uk: "Усі учасники" },
+  "community.detail.noInteractions": { en: "No interactions logged", uk: "Немає записаних взаємодій" },
+  "community.detail.lastActive": { en: "last active", uk: "остання активність" },
+  "community.detail.loadError": { en: "Couldn't load community details.", uk: "Не вдалося завантажити деталі спільноти." },
 
   // ---- contacts ----
   "contact.role.unknown": { en: "Role unknown", uk: "Роль невідома" },
@@ -345,7 +372,7 @@ export const dictionary = {
   "timelineView.clusterSearch": { en: "Search by person or cluster…", uk: "Пошук за людиною чи кластером…" },
 
   // ---- history graph (spatial timeline canvas) ----
-  "historyGraph.badge": { en: "time · clusters", uk: "time · clusters" },
+  "historyGraph.badge": { en: "time-ordered", uk: "у хронології" },
   "historyGraph.subtitle": {
     en: "What happened and when — each shape is one interaction and everyone in it.",
     uk: "Що сталося і коли — кожна фігура це одна взаємодія і всі її учасники.",
@@ -356,7 +383,7 @@ export const dictionary = {
   "historyGraph.year": { en: "Year", uk: "Рік" },
   "historyGraph.panBack": { en: "Earlier", uk: "Раніше" },
   "historyGraph.panFwd": { en: "Later", uk: "Пізніше" },
-  "historyGraph.sidebarTitle": { en: "Timeline", uk: "Timeline" },
+  "historyGraph.sidebarTitle": { en: "Timeline", uk: "Історія взаємодій" },
   "historyGraph.eventsInView": { en: "in view", uk: "у полі зору" },
   "historyGraph.searchPlaceholder": { en: "Event or participant", uk: "Подія чи учасник" },
   "historyGraph.legendTitle": { en: "Legend", uk: "Легенда" },
@@ -425,9 +452,22 @@ export const dictionary = {
     uk: "Гілка від події поза цим кластером",
   },
   "cluster.legend.root": { en: "Start of a thread", uk: "Початок гілки" },
+  "cluster.dragHint": {
+    en: "Drag the left dot onto a card to change what this branched from · drag the right dot onto a card to branch it from here, or into empty space for a new branch · double-click a card to edit it",
+    uk: "Перетягніть ліву крапку на картку, щоб змінити, від чого це відгалужено · перетягніть праву крапку на картку, щоб зробити її гілкою звідси, або в порожнє місце — для нової гілки · двічі клацніть картку, щоб редагувати",
+  },
+  "cluster.dragCycleError": { en: "Can't link here — that would create a loop.", uk: "Не можна пов'язати тут — це створить цикл." },
+  "cluster.portLeftTitle": { en: "Drag onto another card to change what this branched from — or into empty space to detach", uk: "Перетягніть на іншу картку, щоб змінити, від чого це відгалужено — або в порожнє місце, щоб відʼєднати" },
+  "cluster.portRightTitle": { en: "Drag onto another card to branch it from here — or into empty space to start a new branch", uk: "Перетягніть на іншу картку, щоб зробити її гілкою від цієї — або в порожнє місце, щоб почати нову" },
+  "cluster.undo.action": { en: "Undo", uk: "Скасувати" },
+  "cluster.undo.relinked": { en: "Relinked. ", uk: "Перепов'язано. " },
+  "cluster.undo.linkedChild": { en: "Linked as a branch. ", uk: "Прив'язано як гілку. " },
+  "cluster.undo.detached": { en: "Detached. ", uk: "Відʼєднано. " },
   // ---- activity / follow-ups page ----
   "activity.title": { en: "Follow-ups", uk: "Нагадування" },
   "activity.empty": { en: "No upcoming follow-ups.", uk: "Немає найближчих нагадувань." },
+  "activity.fromNote": { en: "From:", uk: "З нотатки:" },
+  "activity.openInHistory": { en: "Open in history", uk: "Відкрити в історії" },
 
   "interactionType.MEETING": { en: "Meeting", uk: "Зустріч" },
   "interactionType.CALL": { en: "Call", uk: "Дзвінок" },
@@ -570,6 +610,33 @@ export const dictionary = {
   "connection.submit": { en: "Add connection", uk: "Додати зв'язок" },
   "connection.submitPending": { en: "Saving...", uk: "Збереження..." },
 
+  // ---- settings: personal profile ----
+  "settings.profile.title": { en: "Personal profile", uk: "Особистий профіль" },
+  "settings.profile.description": {
+    en: "Your account name, email, and password.",
+    uk: "Ім'я вашого акаунту, емейл і пароль.",
+  },
+  "settings.profile.name": { en: "Name", uk: "Ім'я" },
+  "settings.profile.namePlaceholder": { en: "Your name", uk: "Ваше ім'я" },
+  "settings.profile.email": { en: "Email", uk: "Емейл" },
+  "settings.profile.saveName": { en: "Save", uk: "Зберегти" },
+  "settings.profile.nameSaved": { en: "Profile updated", uk: "Профіль оновлено" },
+  "settings.profile.changePassword": { en: "Change password", uk: "Змінити пароль" },
+  "settings.profile.currentPassword": { en: "Current password", uk: "Поточний пароль" },
+  "settings.profile.newPassword": { en: "New password", uk: "Новий пароль" },
+  "settings.profile.confirmPassword": { en: "Confirm new password", uk: "Підтвердіть новий пароль" },
+  "settings.profile.savePassword": { en: "Update password", uk: "Оновити пароль" },
+  "settings.profile.passwordTooShort": {
+    en: "Password must be at least 8 characters.",
+    uk: "Пароль має містити щонайменше 8 символів.",
+  },
+  "settings.profile.passwordMismatch": { en: "Passwords don't match.", uk: "Паролі не збігаються." },
+  "settings.profile.wrongCurrentPassword": {
+    en: "Current password is incorrect.",
+    uk: "Поточний пароль неправильний.",
+  },
+  "settings.profile.passwordChanged": { en: "Password changed", uk: "Пароль змінено" },
+
   // ---- settings: API keys (MCP access) ----
   "settings.apiKeys.title": { en: "API keys", uk: "API-ключі" },
   "settings.apiKeys.description": {
@@ -613,6 +680,29 @@ export const dictionary = {
   "settings.apiKeys.copy": { en: "Copy", uk: "Копіювати" },
   "settings.apiKeys.copied": { en: "Copied!", uk: "Скопійовано!" },
   "settings.apiKeys.done": { en: "Done", uk: "Готово" },
+  "settings.apiKeys.howToConnect": { en: "How to connect", uk: "Як підключити" },
+  "settings.apiKeys.setupTitle": { en: "Connect an AI assistant", uk: "Підключення AI-асистента" },
+  "settings.apiKeys.setupIntro": {
+    en: "Claude Desktop and Claude Code connect directly via an .mcp.json file or Custom Connector. ChatGPT and Gemini are adding remote-MCP support — check the vendor's current docs before connecting.",
+    uk: "Claude Desktop і Claude Code підключаються напряму через файл .mcp.json або Custom Connector. ChatGPT і Gemini поступово додають підтримку remote MCP — перевірте актуальну документацію провайдера перед підключенням.",
+  },
+  "settings.apiKeys.setupEndpoint": { en: "Endpoint", uk: "Кінцева точка" },
+  "settings.apiKeys.setupHeader": { en: "Header", uk: "Заголовок" },
+  "settings.apiKeys.setupConfigLabel": { en: "Config for Claude Desktop / Claude Code", uk: "Конфіг для Claude Desktop / Claude Code" },
+  "settings.apiKeys.setupConfigLabelReady": {
+    en: "Your config — ready to paste into .mcp.json",
+    uk: "Ваш конфіг — готовий вставити в .mcp.json",
+  },
+  "settings.apiKeys.setupCopyConfig": { en: "Copy config", uk: "Копіювати конфіг" },
+  "settings.apiKeys.setupConfigCopied": { en: "Config copied!", uk: "Конфіг скопійовано!" },
+  "settings.apiKeys.setupToolsNote": {
+    en: "A read-only key exposes read-only tools. A read + write key additionally exposes tools to create, update, and delete records.",
+    uk: "Ключ \"лише читання\" відкриває тільки інструменти читання. Ключ \"читання і запис\" додатково відкриває інструменти створення, оновлення й видалення записів.",
+  },
+  "settings.apiKeys.setupPlaceholderNote": {
+    en: "Replace <your-api-key> with a key generated above.",
+    uk: "Замініть <your-api-key> на ключ, згенерований вище.",
+  },
 } as const satisfies Record<string, Entry>;
 
 export type DictionaryKey = keyof typeof dictionary;

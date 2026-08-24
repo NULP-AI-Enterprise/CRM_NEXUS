@@ -3,11 +3,12 @@ import { z } from "zod";
 
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { InteractionType } from "@/generated/prisma/enums";
 import { checkRateLimit, getClientIp, rateLimitedResponse } from "@/lib/rate-limit";
 
 const updateInteractionSchema = z.object({
   rawText: z.string().trim().min(1).max(8000).optional(),
-  type: z.nativeEnum(require("@/generated/prisma/enums").InteractionType).optional(),
+  type: z.nativeEnum(InteractionType).optional(),
   createdAt: z.string().datetime().optional(),
   followUp: z.string().trim().max(2000).nullish(),
   followUpDate: z.string().date().nullish(),

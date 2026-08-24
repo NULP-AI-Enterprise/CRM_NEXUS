@@ -3,44 +3,97 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import {
-  Network,
-  LayoutDashboard,
-  Users,
-  Building2,
-  UsersRound,
-  Share2,
-  History,
-  Bell,
-  Settings,
-  Menu,
-  X,
-  type LucideIcon,
-} from "lucide-react";
+import { Menu, X } from "lucide-react";
 
 import { LanguageSwitcher } from "@/components/language-switcher";
 import { useTranslation } from "@/lib/i18n/context";
 import type { EntityCounts } from "@/lib/data/counts";
 
+// ── Category accents (icon stroke + tinted active background) ─────────────
+// The reference design paints each entity type with one signature accent and a
+// matching low-saturation tint behind the active row. Neutral rows (Dashboard,
+// graph, activity) fall back to the warm-grey tint with a hairline border.
+const TINT = {
+  neutral: { bg: "#f1f1ed", border: "#e6e5e0" },
+  people: { bg: "#fdede7", border: "transparent" },
+  companies: { bg: "#e8f6f0", border: "transparent" },
+  communities: { bg: "#f1ebfc", border: "transparent" },
+  connections: { bg: "#eaf1fe", border: "transparent" },
+  timeline: { bg: "#edf2f8", border: "#dde6f1" },
+} as const;
+
+// Reference-template SVG glyphs, reproduced path-for-path so the nav matches
+// pixel-for-pixel. Each takes the accent colour so one glyph serves light rows.
+type IconProps = { color?: string };
+
+const NavIcons = {
+  dashboard: () => (
+    <span
+      className="relative shrink-0"
+      style={{ width: 14, height: 14, borderRadius: 4, border: "1.5px solid #6e7480" }}
+    />
+  ),
+  people: ({ color = "#EF8163" }: IconProps) => (
+    <svg className="relative shrink-0" width="15" height="15" viewBox="0 0 16 16" fill="none">
+      <circle cx="8" cy="5.6" r="2.9" stroke={color} strokeWidth="1.5" />
+      <path d="M2.6 14.2c0-3.2 2.4-5 5.4-5s5.4 1.8 5.4 5" stroke={color} strokeWidth="1.5" strokeLinecap="round" />
+    </svg>
+  ),
+  companies: ({ color = "#43A883" }: IconProps) => (
+    <svg className="relative shrink-0" width="15" height="15" viewBox="0 0 16 16" fill="none">
+      <path d="M2.8 14.2V3.2h6.4v11" stroke={color} strokeWidth="1.5" strokeLinejoin="round" />
+      <path d="M9.2 14.2V6.6h4v7.6" stroke={color} strokeWidth="1.5" strokeLinejoin="round" />
+      <path d="M4.9 5.9h2.2M4.9 8.5h2.2M4.9 11.1h2.2" stroke={color} strokeWidth="1.5" strokeLinecap="round" />
+    </svg>
+  ),
+  communities: ({ color = "#9B7BE0" }: IconProps) => (
+    <svg className="relative shrink-0" width="15" height="15" viewBox="0 0 16 16" fill="none">
+      <circle cx="5.2" cy="6.1" r="2.1" stroke={color} strokeWidth="1.5" />
+      <circle cx="10.8" cy="6.1" r="2.1" stroke={color} strokeWidth="1.5" />
+      <circle cx="8" cy="11.2" r="2.3" stroke={color} strokeWidth="1.5" />
+    </svg>
+  ),
+  connections: ({ color = "#5B8DEF" }: IconProps) => (
+    <svg className="relative shrink-0" width="15" height="15" viewBox="0 0 16 16" fill="none">
+      <path d="M4.2 14.4V2.2" stroke={color} strokeWidth="1.5" strokeLinecap="round" />
+      <path d="M4.2 3.1h8.2l-1.9 2.7 1.9 2.7H4.2" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  ),
+  graph: () => (
+    <svg className="relative shrink-0" width="15" height="15" viewBox="0 0 15 15">
+      <line x1="4" y1="4" x2="11" y2="9" stroke="#6E7480" strokeWidth="1.2" />
+      <line x1="4" y1="4" x2="4" y2="11" stroke="#6E7480" strokeWidth="1.2" />
+      <circle cx="4" cy="4" r="2.4" fill="#EF8163" />
+      <circle cx="11" cy="9" r="2" fill="#5B8DEF" />
+      <circle cx="4" cy="11" r="2" fill="#43A883" />
+    </svg>
+  ),
+  timeline: () => (
+    <svg className="relative shrink-0" width="15" height="15" viewBox="0 0 15 15">
+      <line x1="1" y1="12" x2="14" y2="12" stroke="#6E7480" strokeWidth="1.2" />
+      <circle cx="4" cy="6" r="2.6" fill="none" stroke="#7C9CF0" strokeWidth="1.3" />
+      <circle cx="10.5" cy="5" r="3.2" fill="none" stroke="#E9A15F" strokeWidth="1.3" />
+    </svg>
+  ),
+  activity: () => (
+    <span className="relative flex shrink-0 flex-col" style={{ width: 14, gap: "2.5px" }}>
+      <span style={{ height: "1.5px", background: "#6e7480" }} />
+      <span style={{ height: "1.5px", width: "70%", background: "#6e7480" }} />
+      <span style={{ height: "1.5px", background: "#6e7480" }} />
+    </span>
+  ),
+} as const;
+
+type IconName = keyof typeof NavIcons;
+
 interface NavItem {
   href: string;
-  icon: LucideIcon;
+  icon: IconName;
   label: string;
-  count?: number;
   color?: string;
+  tint: keyof typeof TINT;
+  count?: number;
 }
-
-// Each entity/network type keeps one signature color for its icon everywhere
-// it appears in the nav — the same accents used for category dots elsewhere,
-// applied here to entity *type* instead of contact category.
-const ICON_COLOR = {
-  contacts: "#EF8163",
-  companies: "#43A883",
-  communities: "#9B7BE0",
-  connections: "#5B8DEF",
-  network: "#5B8DEF",
-  timeline: "#E9A15F",
-};
 
 interface AppSidebarProps {
   userEmail?: string | null;
@@ -56,90 +109,126 @@ export function AppSidebar({ userEmail, counts, signOutButton }: AppSidebarProps
   const sections: Array<{ title: string; items: NavItem[] }> = [
     {
       title: t("nav.overview"),
-      items: [{ href: "/dashboard", icon: LayoutDashboard, label: t("nav.dashboard") }],
+      items: [{ href: "/dashboard", icon: "dashboard", label: t("nav.dashboard"), tint: "neutral" }],
     },
     {
       title: t("nav.entities"),
       items: [
-        { href: "/contacts", icon: Users, label: t("dashboard.tab.contacts"), count: counts.contacts, color: ICON_COLOR.contacts },
-        { href: "/companies", icon: Building2, label: t("dashboard.tab.companies"), count: counts.companies, color: ICON_COLOR.companies },
-        { href: "/communities", icon: UsersRound, label: t("dashboard.tab.communities"), count: counts.communities, color: ICON_COLOR.communities },
-        { href: "/network", icon: Share2, label: t("nav.connections"), count: counts.connections, color: ICON_COLOR.connections },
+        { href: "/contacts", icon: "people", label: t("dashboard.tab.contacts"), count: counts.contacts, color: "#EF8163", tint: "people" },
+        { href: "/companies", icon: "companies", label: t("dashboard.tab.companies"), count: counts.companies, color: "#43A883", tint: "companies" },
+        { href: "/communities", icon: "communities", label: t("dashboard.tab.communities"), count: counts.communities, color: "#9B7BE0", tint: "communities" },
+        { href: "/network", icon: "connections", label: t("nav.connections"), count: counts.connections, color: "#5B8DEF", tint: "connections" },
       ],
     },
     {
       title: t("nav.network"),
       items: [
-        { href: "/network", icon: Network, label: t("dashboard.tab.graph"), color: ICON_COLOR.network },
-        { href: "/timeline", icon: History, label: t("dashboard.tab.timeline"), color: ICON_COLOR.timeline },
+        { href: "/network", icon: "graph", label: t("dashboard.tab.graph"), tint: "neutral" },
+        { href: "/timeline", icon: "timeline", label: t("dashboard.tab.timeline"), tint: "timeline" },
       ],
     },
     {
       title: t("nav.activity"),
-      items: [{ href: "/activity", icon: Bell, label: t("nav.followUps") }],
+      items: [{ href: "/activity", icon: "activity", label: t("nav.followUps"), tint: "neutral" }],
     },
   ];
 
   const navContent = (
     <>
-      <Link href="/dashboard" className="flex items-center gap-2 px-1 group" onClick={() => setIsMobileOpen(false)}>
-        <div className="flex size-6 items-center justify-center rounded-md bg-sidebar-primary text-sidebar-primary-foreground shadow-sm transition-transform group-hover:scale-105 shrink-0">
-          <Network className="size-3.5" />
-        </div>
-        <span className="font-heading text-sm font-semibold tracking-tight text-sidebar-foreground">
-          {t("nav.brand")}
+      {/* Brand — dark tile with the three accent dots, wordmark + mono kicker */}
+      <Link
+        href="/dashboard"
+        className="flex items-center gap-2.5 px-2"
+        onClick={() => setIsMobileOpen(false)}
+      >
+        <span
+          className="relative flex-none"
+          style={{ width: 26, height: 26, borderRadius: 9, background: "#1b1d21" }}
+        >
+          <span className="absolute rounded-full" style={{ left: 6, top: 6, width: 6, height: 6, background: "#ef8163" }} />
+          <span className="absolute rounded-full" style={{ right: 6, top: 7, width: 5, height: 5, background: "#5b8def" }} />
+          <span className="absolute rounded-full" style={{ left: 9, bottom: 5, width: 5, height: 5, background: "#9b7be0" }} />
+        </span>
+        <span>
+          <span className="block text-[14px] font-semibold tracking-[-0.2px] text-foreground">
+            {t("nav.brand")}
+          </span>
+          <span className="kicker block" style={{ fontSize: "9.5px", color: "#9a9a94", letterSpacing: "0.06em" }}>
+            {t("nav.brandKicker")}
+          </span>
         </span>
       </Link>
 
-      <nav className="mt-6 flex-1 space-y-5 overflow-y-auto">
+      <nav className="flex flex-1 flex-col gap-[22px] overflow-y-auto">
         {sections.map((section) => (
-          <div key={section.title}>
-            <div className="px-2 pb-1.5 font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
+          <div key={section.title} className="flex flex-col gap-[3px]">
+            <div className="kicker" style={{ padding: "0 8px 6px" }}>
               {section.title}
             </div>
-            <div className="space-y-0.5">
-              {section.items.map((item) => {
-                const isActive = pathname === item.href;
-                const Icon = item.icon;
-                return (
-                  <Link
-                    key={`${section.title}-${item.href}-${item.label}`}
-                    href={item.href}
-                    onClick={() => setIsMobileOpen(false)}
-                    className={`flex items-center gap-2 rounded-md px-2 py-1.5 text-xs font-medium transition-colors ${
-                      isActive
-                        ? "bg-sidebar-accent text-sidebar-accent-foreground"
-                        : "text-sidebar-foreground hover:bg-sidebar-accent/60"
-                    }`}
-                  >
-                    <Icon className="size-3.5 shrink-0" style={item.color ? { color: item.color } : undefined} />
-                    <span className="flex-1 truncate">{item.label}</span>
-                    {item.count != null && (
-                      <span className="text-[10px] font-mono text-muted-foreground">{item.count}</span>
-                    )}
-                  </Link>
-                );
-              })}
-            </div>
+            {section.items.map((item) => {
+              const isActive = pathname === item.href;
+              const Icon = NavIcons[item.icon];
+              const tint = TINT[item.tint];
+              return (
+                <Link
+                  key={`${section.title}-${item.href}-${item.label}`}
+                  href={item.href}
+                  onClick={() => setIsMobileOpen(false)}
+                  className="group relative flex items-center gap-[9px] rounded-[9px] px-2.5 py-2 text-[13px] font-medium text-[#3a3c42] transition-colors hover:bg-[#f4f4f1]"
+                >
+                  {isActive && (
+                    <span
+                      className="absolute inset-0 rounded-[9px]"
+                      style={{ background: tint.bg, border: `1px solid ${tint.border}` }}
+                    />
+                  )}
+                  <Icon color={item.color} />
+                  <span className="relative flex-1 truncate">{item.label}</span>
+                  {item.count != null && (
+                    <span className="relative font-mono text-[10px] text-[#9a9a94]">{item.count}</span>
+                  )}
+                </Link>
+              );
+            })}
           </div>
         ))}
       </nav>
 
-      <div className="mt-auto space-y-2 border-t border-sidebar-border pt-3">
+      {/* Footer — user card, then the settings / language / sign-out controls */}
+      <div className="mt-auto flex flex-col gap-2">
         {userEmail && (
-          <div className="flex items-center gap-1.5 rounded-md border border-sidebar-border bg-card px-2 py-1 text-[11px] text-muted-foreground">
-            <span className="size-1.5 shrink-0 rounded-full bg-accent" />
-            <span className="truncate font-mono">{userEmail}</span>
+          <div
+            className="flex items-center gap-[9px] rounded-[11px] px-2.5 py-2.5"
+            style={{ background: "#f7f7f4", border: "1px solid #edece8" }}
+          >
+            <span
+              className="flex flex-none items-center justify-center rounded-full text-[11px] font-semibold uppercase text-[#6e7480]"
+              style={{ width: 26, height: 26, background: "#e2e1db" }}
+            >
+              {userEmail.charAt(0)}
+            </span>
+            <div className="min-w-0">
+              <div className="truncate text-[12px] font-semibold text-foreground">{userEmail}</div>
+              <div className="text-[10.5px] text-[#9a9a94]">{t("nav.myNetwork")}</div>
+            </div>
           </div>
         )}
-        <div className="flex items-center justify-between gap-1">
+        <div className="flex items-center gap-1.5 px-0.5">
           <Link
             href="/settings"
             title={t("nav.settings")}
             onClick={() => setIsMobileOpen(false)}
-            className="flex size-7 items-center justify-center rounded-md border border-sidebar-border bg-card text-muted-foreground hover:text-sidebar-foreground transition-colors"
+            className="flex size-7 items-center justify-center rounded-[8px] border border-[#edece8] bg-card text-[#9a9a94] transition-colors hover:text-foreground"
           >
-            <Settings className="size-3.5" />
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+              <circle cx="8" cy="8" r="2.2" stroke="currentColor" strokeWidth="1.4" />
+              <path
+                d="M8 1.5v1.4M8 13.1v1.4M14.5 8h-1.4M2.9 8H1.5M12.6 3.4l-1 1M4.4 11.6l-1 1M12.6 12.6l-1-1M4.4 4.4l-1-1"
+                stroke="currentColor"
+                strokeWidth="1.4"
+                strokeLinecap="round"
+              />
+            </svg>
           </Link>
           <LanguageSwitcher />
           {signOutButton}
@@ -150,15 +239,15 @@ export function AppSidebar({ userEmail, counts, signOutButton }: AppSidebarProps
 
   return (
     <>
-      {/* Mobile top bar. Height is pinned rather than derived from its content
-          because full-bleed screens subtract it to compute their own height —
-          a bar that grows by a pixel would push their bottom edge off-screen. */}
+      {/* Mobile top bar — height pinned so full-bleed screens can subtract it. */}
       <div className="flex h-14 items-center justify-between border-b border-border bg-background/80 px-4 backdrop-blur-xl lg:hidden">
-        <Link href="/dashboard" className="flex items-center gap-2">
-          <div className="flex size-6 items-center justify-center rounded-md bg-primary text-primary-foreground shadow-sm">
-            <Network className="size-3.5" />
-          </div>
-          <span className="font-heading text-sm font-semibold tracking-tight text-foreground">{t("nav.brand")}</span>
+        <Link href="/dashboard" className="flex items-center gap-2.5">
+          <span className="relative flex-none" style={{ width: 24, height: 24, borderRadius: 8, background: "#1b1d21" }}>
+            <span className="absolute rounded-full" style={{ left: 5, top: 5, width: 6, height: 6, background: "#ef8163" }} />
+            <span className="absolute rounded-full" style={{ right: 5, top: 6, width: 5, height: 5, background: "#5b8def" }} />
+            <span className="absolute rounded-full" style={{ left: 8, bottom: 4, width: 5, height: 5, background: "#9b7be0" }} />
+          </span>
+          <span className="text-[14px] font-semibold tracking-[-0.2px] text-foreground">{t("nav.brand")}</span>
         </Link>
         <button
           onClick={() => setIsMobileOpen(true)}
@@ -173,7 +262,7 @@ export function AppSidebar({ userEmail, counts, signOutButton }: AppSidebarProps
       {isMobileOpen && (
         <div className="fixed inset-0 z-50 lg:hidden">
           <div className="absolute inset-0 bg-black/30" onClick={() => setIsMobileOpen(false)} />
-          <div className="absolute inset-y-0 left-0 flex w-64 max-w-[85vw] flex-col bg-sidebar px-3 py-4 shadow-2xl">
+          <div className="absolute inset-y-0 left-0 flex w-64 max-w-[85vw] flex-col gap-[22px] bg-sidebar px-3.5 py-5 shadow-2xl">
             <button
               onClick={() => setIsMobileOpen(false)}
               title={t("nav.closeMenu")}
@@ -187,7 +276,7 @@ export function AppSidebar({ userEmail, counts, signOutButton }: AppSidebarProps
       )}
 
       {/* Desktop fixed sidebar */}
-      <aside className="hidden lg:fixed lg:inset-y-0 lg:left-0 lg:z-30 lg:flex lg:w-60 lg:flex-col lg:border-r lg:border-sidebar-border lg:bg-sidebar lg:px-3 lg:py-4">
+      <aside className="hidden lg:fixed lg:inset-y-0 lg:left-0 lg:z-30 lg:flex lg:w-60 lg:flex-col lg:gap-[22px] lg:border-r lg:border-sidebar-border lg:bg-sidebar lg:px-3.5 lg:py-5">
         {navContent}
       </aside>
     </>

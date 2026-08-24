@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { ChevronRight, History, Plus } from "lucide-react";
+import { History, Plus } from "lucide-react";
 
 import { auth } from "@/lib/auth";
 import { getContactDetail } from "@/lib/data/contacts";
@@ -14,7 +14,7 @@ import { ContactProfileBody } from "@/components/contacts/contact-profile-body";
 import { AddNoteForm } from "@/components/contacts/add-note-form";
 import { TimelineView } from "@/components/timeline/timeline-view";
 import { entityKey, type TimelineEvent } from "@/lib/timeline-entity";
-import { MiniNetworkGraph } from "@/components/graph/mini-network-graph";
+import { ContactLocalGraph } from "@/components/graph/contact-local-graph";
 import type { ContactCategory } from "@/generated/prisma/enums";
 
 type ContactPageProps = {
@@ -91,17 +91,17 @@ export default async function ContactPage({ params }: ContactPageProps) {
   return (
     <div className="flex flex-col gap-5 pb-12">
       {/* Breadcrumb */}
-      <div className="flex items-center gap-1.5 text-[11.5px] text-muted-foreground">
+      <div className="flex items-center gap-1.5 text-[11.5px] text-[#8c8c86]">
         <Link href="/contacts" className="font-medium hover:text-foreground transition-colors">
           {t("contact.breadcrumb")}
         </Link>
-        <ChevronRight className="size-3" />
+        <span>/</span>
         <span className="font-medium text-foreground">{contact.fullName}</span>
       </div>
 
       {/* One unified card: tinted identity header, then a two-column body —
           Fields/Summary/Interactions on the left, Relationships on the right. */}
-      <div className="rounded-xl border border-border bg-card overflow-hidden">
+      <div className="rounded-[18px] border border-border bg-card overflow-hidden">
         <ContactHeader contact={contact} companies={companies} communities={communities} />
 
         <div className="grid lg:grid-cols-[1.5fr_1fr]">
@@ -136,14 +136,13 @@ export default async function ContactPage({ params }: ContactPageProps) {
       </div>
 
       <div className="grid gap-5 lg:grid-cols-2">
-        <MiniNetworkGraph
+        <ContactLocalGraph
           currentContact={{
             id: contact.id,
             fullName: contact.fullName,
             role: contact.role,
             category: contact.category,
             companyName: contact.company?.name || null,
-            usefulnessScore: contact.usefulnessScore,
           }}
           connectedContacts={connectedContacts}
           colleagues={colleagues}

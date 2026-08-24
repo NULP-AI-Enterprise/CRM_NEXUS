@@ -1,380 +1,248 @@
 "use client";
 
-import React, { useEffect, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
-import { Share2, Plus } from "lucide-react";
+import { useMemo, useState } from "react";
+import { Share2 } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
 import { CATEGORY_COLORS, initials } from "@/lib/contact-display";
 import type { ContactCategory } from "@/generated/prisma/enums";
-import { AddConnectionDialog } from "@/components/graph/add-connection-dialog";
-import { useTranslation } from "@/lib/i18n/context";
 
-interface MiniContact {
-  id: string;
-  fullName: string;
-  role?: string | null;
-  category: ContactCategory;
-  relationship?: string | null;
-  companyName?: string | null;
-}
-
-interface MiniNetworkGraphProps {
-  currentContact: {
-    id: string;
-    fullName: string;
-    role?: string | null;
-    category: ContactCategory;
-    companyName?: string | null;
-    usefulnessScore?: number | null;
-  };
-  connectedContacts: MiniContact[];
-  colleagues: MiniContact[];
-  otherAvailableContacts: Array<{
-    id: string;
-    fullName: string;
-    role?: string | null;
-    companyName?: string | null;
-  }>;
-}
-
-interface GraphNodeItem {
+export interface MiniGraphNode {
   id: string;
   name: string;
-  role?: string | null;
   category: ContactCategory | "COMPANY";
   isCenter?: boolean;
+}
+
+export interface MiniGraphEdge {
+  aId: string;
+  bId: string;
   relationship?: string | null;
+}
+
+interface Point {
   x: number;
   y: number;
   vx: number;
   vy: number;
-  radius: number;
 }
 
-export function MiniNetworkGraph({
-  currentContact,
-  connectedContacts,
-  colleagues,
-  otherAvailableContacts,
-}: MiniNetworkGraphProps) {
-  const router = useRouter();
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
-  const [isConnectOpen, setIsConnectOpen] = useState(false);
-  const [hoveredNode, setHoveredNode] = useState<GraphNodeItem | null>(null);
+const W = 480;
+const H = 260;
+const COMPANY_DOT = "#1F6349";
 
-  const nodesRef = useRef<GraphNodeItem[]>([]);
-  const animRef = useRef<number | null>(null);
+/** A one-shot force layout, not a live simulation: positions are settled here
+ * and rendered statically. The old version ran a `requestAnimationFrame`
+ * loop forever with randomized initial velocities, so it visibly jittered
+ * without ever converging — a graph of 5-15 nodes doesn't need continuous
+ * physics, it needs to settle once and hold still. No `Math.random()` either,
+ * so the same input always lays out the same way. */
+function layoutNodes(nodes: MiniGraphNode[], edges: MiniGraphEdge[]): Map<string, Point> {
+  const pos = new Map<string, Point>();
+  const center = nodes.find((n) => n.isCenter);
+  const others = center ? nodes.filter((n) => !n.isCenter) : nodes;
 
-  const { t } = useTranslation();
-
-  // Combine unique connected nodes
-  const allPeers = React.useMemo(() => {
-    const map = new Map<string, MiniContact>();
-    for (const c of connectedContacts) {
-      map.set(c.id, c);
-    }
-    for (const col of colleagues) {
-      if (!map.has(col.id)) {
-        map.set(col.id, { ...col, relationship: t("relationship.colleague") });
-      }
-    }
-    return Array.from(map.values());
-  }, [connectedContacts, colleagues, t]);
-
-  useEffect(() => {
-    const width = containerRef.current?.clientWidth || 500;
-    const height = 300;
-
-    const nodes: GraphNodeItem[] = [
-      {
-        id: currentContact.id,
-        name: currentContact.fullName,
-        role: currentContact.role,
-        category: currentContact.category,
-        isCenter: true,
-        x: width / 2,
-        y: height / 2,
-        vx: 0,
-        vy: 0,
-        radius: 22,
-      },
-    ];
-
-    allPeers.forEach((peer, i) => {
-      const angle = (i / Math.max(1, allPeers.length)) * Math.PI * 2;
-      const dist = 95 + (i % 2 === 0 ? 0 : 25);
-      nodes.push({
-        id: peer.id,
-        name: peer.fullName,
-        role: peer.role,
-        category: peer.category,
-        relationship: peer.relationship,
-        x: width / 2 + Math.cos(angle) * dist,
-        y: height / 2 + Math.sin(angle) * dist,
-        vx: (Math.random() - 0.5) * 1.5,
-        vy: (Math.random() - 0.5) * 1.5,
-        radius: 17,
-      });
+  others.forEach((n, i) => {
+    const angle = (i / Math.max(1, others.length)) * Math.PI * 2;
+    const radius = center ? 90 : Math.min(100, 40 + others.length * 6);
+    pos.set(n.id, {
+      x: W / 2 + Math.cos(angle) * radius,
+      y: H / 2 + Math.sin(angle) * radius,
+      vx: 0,
+      vy: 0,
     });
+  });
+  if (center) pos.set(center.id, { x: W / 2, y: H / 2, vx: 0, vy: 0 });
 
-    nodesRef.current = nodes;
-  }, [currentContact, allPeers]);
-
-  // Render loop
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-
-    let isRunning = true;
-
-    const render = () => {
-      if (!isRunning) return;
-      const width = containerRef.current?.clientWidth || 500;
-      const height = 300;
-
-      const dpr = window.devicePixelRatio || 1;
-      if (canvas.width !== width * dpr || canvas.height !== height * dpr) {
-        canvas.width = width * dpr;
-        canvas.height = height * dpr;
-        canvas.style.width = `${width}px`;
-        canvas.style.height = `${height}px`;
-      }
-
-      ctx.save();
-      ctx.scale(dpr, dpr);
-      ctx.clearRect(0, 0, width, height);
-
-      const nodes = nodesRef.current;
-      const center = nodes[0];
-
-      // Physics step
-      if (center) {
-        center.x = width / 2;
-        center.y = height / 2;
-
-        for (let i = 1; i < nodes.length; i++) {
-          const node = nodes[i]!;
-          const dx = node.x - center.x;
-          const dy = node.y - center.y;
-          const dist = Math.hypot(dx, dy) || 1;
-          const targetDist = 100;
-          const spring = (dist - targetDist) * 0.03;
-
-          node.vx -= (dx / dist) * spring;
-          node.vy -= (dy / dist) * spring;
-
-          for (let j = 1; j < nodes.length; j++) {
-            if (i === j) continue;
-            const other = nodes[j]!;
-            const odx = node.x - other.x;
-            const ody = node.y - other.y;
-            const odist = Math.hypot(odx, ody) || 1;
-            if (odist < 50) {
-              node.vx += (odx / odist) * 0.6;
-              node.vy += (ody / odist) * 0.6;
-            }
-          }
-
-          node.vx *= 0.85;
-          node.vy *= 0.85;
-          node.x += node.vx;
-          node.y += node.vy;
+  const EDGE_LEN = 95;
+  const MIN_SEP = 54;
+  for (let iter = 0; iter < 150; iter++) {
+    for (let i = 0; i < nodes.length; i++) {
+      for (let j = i + 1; j < nodes.length; j++) {
+        const a = pos.get(nodes[i]!.id)!;
+        const b = pos.get(nodes[j]!.id)!;
+        const dx = a.x - b.x;
+        const dy = a.y - b.y;
+        const dist = Math.hypot(dx, dy) || 1;
+        if (dist < MIN_SEP) {
+          const f = ((MIN_SEP - dist) / dist) * 0.06;
+          a.vx += dx * f;
+          a.vy += dy * f;
+          b.vx -= dx * f;
+          b.vy -= dy * f;
         }
-      }
-
-      // Draw minimal monochrome links
-      if (center) {
-        for (let i = 1; i < nodes.length; i++) {
-          const peer = nodes[i]!;
-          ctx.save();
-          ctx.beginPath();
-          ctx.moveTo(center.x, center.y);
-          ctx.lineTo(peer.x, peer.y);
-          ctx.strokeStyle = "rgba(36, 29, 21, 0.2)";
-          ctx.lineWidth = 1.2;
-          ctx.stroke();
-
-          // Relationship label capsule on midpoint
-          if (peer.relationship) {
-            const midX = (center.x + peer.x) / 2;
-            const midY = (center.y + peer.y) / 2;
-            ctx.font = "400 9.5px var(--font-sans), Inter, sans-serif";
-            const tw = ctx.measureText(peer.relationship).width;
-            ctx.fillStyle = "#241D15";
-            ctx.strokeStyle = "rgba(255, 255, 255, 0.1)";
-            ctx.lineWidth = 1;
-            ctx.beginPath();
-            ctx.roundRect(midX - tw / 2 - 4, midY - 6, tw + 8, 12, 3);
-            ctx.fill();
-            ctx.stroke();
-            ctx.fillStyle = "#B5A896";
-            ctx.textAlign = "center";
-            ctx.textBaseline = "middle";
-            ctx.fillText(peer.relationship, midX, midY);
-          }
-          ctx.restore();
-        }
-      }
-
-      // Draw Nodes (Attio/Linear style)
-      for (const node of nodes) {
-        const isHovered = hoveredNode?.id === node.id;
-        const colors =
-          node.category !== "COMPANY"
-            ? CATEGORY_COLORS[node.category] || CATEGORY_COLORS.OTHER
-            : { dot: "#8A8175" };
-
-        ctx.save();
-
-        // Circle
-        ctx.beginPath();
-        ctx.arc(node.x, node.y, node.radius, 0, Math.PI * 2);
-        ctx.fillStyle = node.isCenter ? "#241D15" : isHovered ? "#F1EAE0" : "#FFFFFF";
-        ctx.fill();
-
-        ctx.strokeStyle = node.isCenter ? "#B8583E" : isHovered ? "rgba(36, 29, 21, 0.35)" : "rgba(36, 29, 21, 0.18)";
-        ctx.lineWidth = node.isCenter ? 2 : 1.2;
-        ctx.stroke();
-
-        // Category dot on node
-        if (!node.isCenter) {
-          ctx.beginPath();
-          ctx.arc(node.x + node.radius * 0.65, node.y - node.radius * 0.65, 3, 0, Math.PI * 2);
-          ctx.fillStyle = colors.dot;
-          ctx.fill();
-          ctx.strokeStyle = "#FFFFFF";
-          ctx.lineWidth = 1;
-          ctx.stroke();
-        }
-
-        // Initials
-        ctx.fillStyle = node.isCenter ? "#F1EAE0" : "#241D15";
-        ctx.font = node.isCenter ? "500 11px var(--font-sans), Inter, sans-serif" : "500 9px var(--font-sans), Inter, sans-serif";
-        ctx.textAlign = "center";
-        ctx.textBaseline = "middle";
-        ctx.fillText(initials(node.name), node.x, node.y + 0.5);
-
-        // Label below
-        ctx.font = "400 10.5px var(--font-sans), Inter, sans-serif";
-        ctx.fillStyle = node.isCenter ? "#241D15" : "#7A6F5F";
-        ctx.fillText(
-          node.name.length > 15 ? `${node.name.slice(0, 13)}...` : node.name,
-          node.x,
-          node.y + node.radius + 11
-        );
-
-        ctx.restore();
-      }
-
-      ctx.restore();
-      animRef.current = requestAnimationFrame(render);
-    };
-
-    animRef.current = requestAnimationFrame(render);
-
-    return () => {
-      isRunning = false;
-      if (animRef.current) cancelAnimationFrame(animRef.current);
-    };
-  }, [hoveredNode]);
-
-  const handleCanvasClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    const rect = canvasRef.current?.getBoundingClientRect();
-    if (!rect) return;
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-
-    for (const node of nodesRef.current) {
-      const dx = x - node.x;
-      const dy = y - node.y;
-      if (dx * dx + dy * dy <= node.radius * node.radius) {
-        if (!node.isCenter) {
-          router.push(`/contacts/${node.id}`);
-        }
-        break;
       }
     }
-  };
-
-  const handleCanvasMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    const rect = canvasRef.current?.getBoundingClientRect();
-    if (!rect) return;
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-
-    let found: GraphNodeItem | null = null;
-    for (const node of nodesRef.current) {
-      const dx = x - node.x;
-      const dy = y - node.y;
-      if (dx * dx + dy * dy <= node.radius * node.radius) {
-        found = node;
-        break;
-      }
+    for (const e of edges) {
+      const a = pos.get(e.aId);
+      const b = pos.get(e.bId);
+      if (!a || !b) continue;
+      const dx = b.x - a.x;
+      const dy = b.y - a.y;
+      const dist = Math.hypot(dx, dy) || 1;
+      const f = ((dist - EDGE_LEN) / dist) * 0.02;
+      a.vx += dx * f;
+      a.vy += dy * f;
+      b.vx -= dx * f;
+      b.vy -= dy * f;
     }
-    setHoveredNode(found);
-  };
+    for (const n of nodes) {
+      const p = pos.get(n.id)!;
+      if (n.isCenter) {
+        p.x = W / 2;
+        p.y = H / 2;
+        continue;
+      }
+      p.vx += (W / 2 - p.x) * 0.0015;
+      p.vy += (H / 2 - p.y) * 0.0015;
+      p.vx *= 0.82;
+      p.vy *= 0.82;
+      p.x = Math.min(W - 30, Math.max(30, p.x + p.vx));
+      p.y = Math.min(H - 34, Math.max(34, p.y + p.vy));
+    }
+  }
+  return pos;
+}
+
+function dotColorFor(category: ContactCategory | "COMPANY"): string {
+  return category === "COMPANY" ? COMPANY_DOT : CATEGORY_COLORS[category]?.dot ?? CATEGORY_COLORS.OTHER.dot;
+}
+
+interface MiniRelationshipGraphProps {
+  title: string;
+  countLabel?: string;
+  nodes: MiniGraphNode[];
+  edges: MiniGraphEdge[];
+  onNodeClick?: (id: string) => void;
+  addButton?: { label: string; onClick: () => void };
+  emptyLabel: string;
+  emptyAction?: { label: string; onClick: () => void };
+}
+
+export function MiniRelationshipGraph({
+  title,
+  countLabel,
+  nodes,
+  edges,
+  onNodeClick,
+  addButton,
+  emptyLabel,
+  emptyAction,
+}: MiniRelationshipGraphProps) {
+  const [hoveredId, setHoveredId] = useState<string | null>(null);
+  const positions = useMemo(() => layoutNodes(nodes, edges), [nodes, edges]);
+  const peerCount = nodes.filter((n) => !n.isCenter).length;
 
   return (
-    <div
-      ref={containerRef}
-      className="relative overflow-hidden rounded-xl border border-border bg-card p-4 transition-colors"
-    >
-      <div className="flex items-center justify-between mb-2">
+    <div className="relative overflow-hidden rounded-xl border border-border bg-card p-4 transition-colors">
+      <div className="mb-2 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Share2 className="size-3.5 text-muted-foreground" />
-          <h3 className="text-xs font-semibold text-foreground uppercase tracking-wider">
-            {t("graph.localGraph")}
-          </h3>
-          <span className="rounded-md border border-border bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground font-mono">
-            {allPeers.length}
+          <h3 className="text-xs font-semibold uppercase tracking-wider text-foreground">{title}</h3>
+          <span className="rounded-md border border-border bg-muted px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground">
+            {countLabel ?? peerCount}
           </span>
         </div>
-        <Button
-          size="sm"
-          onClick={() => setIsConnectOpen(true)}
-          className="h-6.5 text-xs bg-secondary hover:bg-secondary/70 text-secondary-foreground gap-1 rounded-md"
-        >
-          <Plus className="size-3" />
-          {t("graph.add")}
-        </Button>
+        {addButton && (
+          <button
+            onClick={addButton.onClick}
+            className="flex h-6.5 items-center gap-1 rounded-md bg-secondary px-2.5 text-xs font-medium text-secondary-foreground hover:bg-secondary/70"
+          >
+            {addButton.label}
+          </button>
+        )}
       </div>
 
-      {allPeers.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-8 text-center text-xs text-muted-foreground">
-          <p>{t("graph.noDirectConnections")}</p>
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => setIsConnectOpen(true)}
-            className="mt-2.5 border-border bg-card text-xs text-muted-foreground gap-1.5"
-          >
-            <Plus className="size-3" />
-            {t("graph.connect")}
-          </Button>
+      {peerCount === 0 ? (
+        <div className="flex flex-col items-center justify-center gap-2.5 py-8 text-center text-xs text-muted-foreground">
+          <p>{emptyLabel}</p>
+          {emptyAction && (
+            <button
+              onClick={emptyAction.onClick}
+              className="rounded-md border border-border bg-card px-2.5 py-1.5 text-xs text-muted-foreground hover:text-foreground"
+            >
+              {emptyAction.label}
+            </button>
+          )}
         </div>
       ) : (
-        <canvas
-          ref={canvasRef}
-          onClick={handleCanvasClick}
-          onMouseMove={handleCanvasMouseMove}
-          onMouseLeave={() => setHoveredNode(null)}
-          className="block w-full h-[300px] cursor-pointer rounded-lg bg-muted border border-border"
-        />
-      )}
+        <svg viewBox={`0 0 ${W} ${H}`} className="block h-[260px] w-full rounded-lg border border-border bg-muted">
+          {nodes.map((n) => {
+            if (n.isCenter) return null;
+            const from = positions.get(n.id);
+            const relatedEdges = edges.filter((e) => e.aId === n.id || e.bId === n.id);
+            return relatedEdges.map((e) => {
+              const otherId = e.aId === n.id ? e.bId : e.aId;
+              const other = positions.get(otherId);
+              if (!from || !other) return null;
+              const midX = (from.x + other.x) / 2;
+              const midY = (from.y + other.y) / 2;
+              return (
+                <g key={`${e.aId}-${e.bId}`}>
+                  <line x1={from.x} y1={from.y} x2={other.x} y2={other.y} stroke="var(--border)" strokeWidth={1.2} />
+                  {e.relationship && (
+                    <text
+                      x={midX}
+                      y={midY}
+                      textAnchor="middle"
+                      dominantBaseline="middle"
+                      fontSize={9}
+                      fill="var(--muted-foreground)"
+                      style={{ paintOrder: "stroke", stroke: "var(--muted)", strokeWidth: 3 }}
+                    >
+                      {e.relationship}
+                    </text>
+                  )}
+                </g>
+              );
+            });
+          })}
 
-      <AddConnectionDialog
-        open={isConnectOpen}
-        onOpenChange={setIsConnectOpen}
-        fromContact={{ id: currentContact.id, name: currentContact.fullName }}
-        availableContacts={otherAvailableContacts}
-        onSuccess={() => {
-          router.refresh();
-        }}
-      />
+          {nodes.map((n) => {
+            const p = positions.get(n.id);
+            if (!p) return null;
+            const isHovered = hoveredId === n.id;
+            const r = n.isCenter ? 22 : 17;
+            return (
+              <g
+                key={n.id}
+                transform={`translate(${p.x}, ${p.y})`}
+                className={n.isCenter ? "" : "cursor-pointer"}
+                onMouseEnter={() => setHoveredId(n.id)}
+                onMouseLeave={() => setHoveredId((id) => (id === n.id ? null : id))}
+                onClick={() => !n.isCenter && onNodeClick?.(n.id)}
+              >
+                <title>{n.name}</title>
+                <circle
+                  r={r}
+                  fill={n.isCenter ? "var(--foreground)" : isHovered ? "var(--secondary)" : "var(--card)"}
+                  stroke={n.isCenter ? "var(--primary)" : isHovered ? "var(--muted-foreground)" : "var(--border)"}
+                  strokeWidth={n.isCenter ? 2 : 1.2}
+                />
+                {!n.isCenter && (
+                  <circle cx={r * 0.68} cy={-r * 0.68} r={3.2} fill={dotColorFor(n.category)} stroke="var(--card)" strokeWidth={1} />
+                )}
+                <text
+                  textAnchor="middle"
+                  dominantBaseline="middle"
+                  fontSize={n.isCenter ? 11 : 9.5}
+                  fontWeight={500}
+                  fill={n.isCenter ? "var(--card)" : "var(--foreground)"}
+                >
+                  {initials(n.name)}
+                </text>
+                <text
+                  y={r + 13}
+                  textAnchor="middle"
+                  fontSize={10}
+                  fill={n.isCenter ? "var(--foreground)" : "var(--muted-foreground)"}
+                >
+                  {n.name.length > 15 ? `${n.name.slice(0, 13)}…` : n.name}
+                </text>
+              </g>
+            );
+          })}
+        </svg>
+      )}
     </div>
   );
 }

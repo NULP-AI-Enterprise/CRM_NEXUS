@@ -1,10 +1,18 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Plus, Search } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import {
+  ListHeader,
+  AddButton,
+  FilterBar,
+  SearchField,
+  FilterSelect,
+  FilterMeta,
+  ListEmpty,
+  EntityGlyph,
+  HEADER_TINT,
+} from "@/components/layout/list-chrome";
 import { CompanyAccordion } from "@/components/dashboard/company-accordion";
 import { CompanyFormDialog } from "@/components/dashboard/company-form-dialog";
 import { useTranslation } from "@/lib/i18n/context";
@@ -48,58 +56,36 @@ export function CompaniesPageView({ companies, unassignedContacts }: CompaniesPa
 
   return (
     <div className="flex flex-col gap-4 pb-12">
-      <div className="flex items-center justify-between gap-2">
-        <h1 className="font-heading text-lg font-semibold text-foreground">
-          {t("dashboard.tab.companies")} <span className="text-sm font-normal text-muted-foreground">({companies.length})</span>
-        </h1>
-        <Button
-          size="sm"
-          onClick={() => setIsNewCompanyOpen(true)}
-          className="h-7 px-3 text-xs bg-secondary hover:bg-secondary/70 text-secondary-foreground gap-1.5 rounded-md"
-        >
-          <Plus className="size-3" />
-          {t("dashboard.newCompany")}
-        </Button>
-      </div>
+      <ListHeader
+        icon={EntityGlyph.companies()}
+        tint={HEADER_TINT.companies}
+        title={t("dashboard.tab.companies")}
+        count={companies.length}
+        action={<AddButton onClick={() => setIsNewCompanyOpen(true)}>{t("dashboard.newCompany")}</AddButton>}
+      />
 
-      <div className="flex flex-wrap items-center gap-2 rounded-xl border border-border bg-card p-2.5">
-        <div className="relative flex-1 min-w-[200px]">
-          <Search className="absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder={t("filters.searchCompanies")}
-            className="h-8 border-border bg-muted pl-8 text-xs"
-          />
-        </div>
+      <FilterBar>
+        <SearchField value={query} onChange={setQuery} placeholder={t("filters.searchCompanies")} />
         {industries.length > 0 && (
-          <select
-            value={industry}
-            onChange={(e) => setIndustry(e.target.value)}
-            className="h-8 rounded-md border border-border bg-muted px-2 text-xs text-foreground"
-          >
+          <FilterSelect value={industry} onChange={(e) => setIndustry(e.target.value)}>
             <option value="ALL">{t("filters.allIndustries")}</option>
             {industries.map((v) => (
               <option key={v} value={v}>
                 {v}
               </option>
             ))}
-          </select>
+          </FilterSelect>
         )}
-        <div className="ml-auto flex items-center gap-2 border-l border-border pl-2.5 text-[11px] text-muted-foreground">
-          <span>{t("filters.results", { count: filteredCompanies.length })}</span>
-          {isFiltered && (
-            <button onClick={() => { setQuery(""); setIndustry("ALL"); }} className="font-semibold text-accent hover:underline">
-              {t("filters.reset")}
-            </button>
-          )}
-        </div>
-      </div>
+        <FilterMeta
+          resultLabel={t("filters.results", { count: filteredCompanies.length })}
+          isFiltered={isFiltered}
+          onReset={() => { setQuery(""); setIndustry("ALL"); }}
+          resetLabel={t("filters.reset")}
+        />
+      </FilterBar>
 
       {filteredCompanies.length === 0 && filteredUnassigned.length === 0 && isFiltered ? (
-        <p className="rounded-xl border border-dashed border-border bg-muted p-8 text-center text-xs text-muted-foreground">
-          {t("filters.empty")}
-        </p>
+        <ListEmpty>{t("filters.empty")}</ListEmpty>
       ) : (
         <CompanyAccordion companies={filteredCompanies} unassignedContacts={filteredUnassigned} />
       )}

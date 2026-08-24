@@ -1,16 +1,19 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
-import { CalendarClock } from "lucide-react";
+import { CalendarClock, GitBranch } from "lucide-react";
 import { format } from "date-fns";
 import { uk, enUS } from "date-fns/locale";
 
 import { useTranslation } from "@/lib/i18n/context";
-import { entityLabel, type TimelineEvent } from "@/lib/timeline-entity";
+import { entityKey, entityLabel, type TimelineEvent } from "@/lib/timeline-entity";
+import { ClusterWorkflowDiagram } from "@/components/timeline/cluster-workflow-diagram";
 
 export function ActivityPageView({ followUps }: { followUps: TimelineEvent[] }) {
   const { t, locale } = useTranslation();
   const dateLocale = locale === "uk" ? uk : enUS;
+  const [workflow, setWorkflow] = useState<{ entityKey: string; eventId: string } | null>(null);
 
   return (
     <div className="flex flex-col gap-4 pb-12">
@@ -44,12 +47,34 @@ export function ActivityPageView({ followUps }: { followUps: TimelineEvent[] }) 
                     </span>
                   </div>
                   <p className="mt-0.5 text-xs leading-relaxed text-amber-900/90">{event.followUp}</p>
+
+                  {/* The action alone ("find out about X") reads as a bare
+                      instruction with no memory of why it matters — the note
+                      it came from is already fetched, just wasn't shown. */}
+                  <p className="mt-1.5 text-[11px] leading-relaxed text-amber-800/70">
+                    <span className="font-medium">{t("activity.fromNote")}</span> {event.rawText}
+                  </p>
+
+                  <button
+                    onClick={() => setWorkflow({ entityKey: entityKey(event.entity), eventId: event.id })}
+                    className="mt-1.5 flex items-center gap-1 text-[11px] font-medium text-amber-800 hover:underline"
+                  >
+                    <GitBranch className="size-3" />
+                    {t("activity.openInHistory")}
+                  </button>
                 </div>
               </div>
             );
           })}
         </div>
       )}
+
+      <ClusterWorkflowDiagram
+        open={workflow != null}
+        onOpenChange={(open) => !open && setWorkflow(null)}
+        entityKey={workflow?.entityKey ?? null}
+        initialEventId={workflow?.eventId ?? null}
+      />
     </div>
   );
 }

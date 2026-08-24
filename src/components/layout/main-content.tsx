@@ -30,5 +30,9 @@ export function MainContent({ children }: { children: React.ReactNode }) {
   }
 
   const wide = matches(pathname, WIDE_ROUTES);
-  return <main className={`w-full py-5 lg:pl-60 ${wide ? "px-4 sm:px-6" : "mx-auto max-w-7xl px-4 sm:px-6"}`}>{children}</main>;
+  return (
+    <main className={`w-full pt-4 pb-10 sm:pt-5 lg:pl-60 ${wide ? "px-4 sm:px-6" : "mx-auto max-w-7xl px-4 sm:px-6"}`}>
+      {children}
+    </main>
+  );
 }

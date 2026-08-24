@@ -46,7 +46,7 @@ export function ContactProfileBody({ contact }: { contact: ContactWithCompany })
       {fields.length > 0 && (
         <div>
           <div className="mb-2 font-mono text-[9px] uppercase tracking-[0.09em] text-muted-foreground">{t("contact.fields")}</div>
-          <div className="grid grid-cols-1 gap-px overflow-hidden rounded-xl border border-border bg-border sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-px overflow-hidden rounded-[14px] border border-border bg-border sm:grid-cols-2">
             {fields.map((f) => (
               <div key={f.label} className="flex gap-2.5 bg-card px-3 py-2.5">
                 <span className="w-20 shrink-0 text-[10.5px] text-muted-foreground">{f.label}</span>
@@ -59,7 +59,7 @@ export function ContactProfileBody({ contact }: { contact: ContactWithCompany })
 
       <div>
         <div className="mb-2 font-mono text-[9px] uppercase tracking-[0.09em] text-muted-foreground">{t("contact.summaryNote")}</div>
-        <p className="rounded-xl border border-border bg-muted px-3.5 py-3 text-[12.5px] leading-relaxed text-foreground whitespace-pre-wrap">
+        <p className="rounded-[14px] border border-border bg-muted px-3.5 py-3 text-[12.5px] leading-relaxed text-foreground whitespace-pre-wrap">
           {contact.fullSummary || t("contact.summaryEmpty")}
         </p>
       </div>

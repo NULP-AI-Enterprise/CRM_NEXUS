@@ -90,6 +90,25 @@ export function NodeInspector({ node, allNodes, links, onClose, onRefreshGraph, 
   const communityNode = node?.nodeType === "community" ? (node as GraphCommunityNode) : null;
   const contactId = contactNode?.id ?? null;
 
+  // Local drafts and dialogs are per-node UI state living on this one
+  // component instance, which stays mounted across selections (the parent
+  // never keys <NodeInspector> by node id). Clicking a different node while
+  // the inspector is already open therefore reuses the same `quickNote` /
+  // `noteParentId` / dialog state — without this reset, a half-typed note
+  // (or an open "add connection" dialog) drafted for the previous node would
+  // silently carry over and could be submitted against the new one instead.
+  // Adjusted during render (React's documented pattern for resetting state on
+  // a prop change) rather than in an effect, so it takes effect in the same
+  // commit instead of causing an extra cascading render.
+  const [lastNodeId, setLastNodeId] = useState<string | null>(node?.id ?? null);
+  if ((node?.id ?? null) !== lastNodeId) {
+    setLastNodeId(node?.id ?? null);
+    setQuickNote("");
+    setNoteParentId(null);
+    setIsConnectDialogOpen(false);
+    setWorkflowEntityKey(null);
+  }
+
   // Fetch this contact's own logged events for the Interactions section — the
   // graph-driven entry point into the big workflow diagram: click a node,
   // then one of its events. Company/community nodes have no direct
@@ -146,7 +165,7 @@ export function NodeInspector({ node, allNodes, links, onClose, onRefreshGraph, 
           body: JSON.stringify({
             rawText: quickNote.trim(),
             contactId: contactNode.id,
-            type: "NOTE",
+            type: "MEMO",
             parentInteractionId: noteParentId,
           }),
         });

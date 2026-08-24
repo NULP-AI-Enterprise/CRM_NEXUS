@@ -170,75 +170,75 @@ const LONG_TEXT =
  */
 const INTERACTIONS = [
   // ---- Thread 1: investor chain that runs four people deep and comes back twice.
-  { key: "i1", on: { contact: "olena" }, type: "MEET", d: 120, parent: null,
+  { key: "i1", on: { contact: "olena" }, type: "MEETING", d: 120, parent: null,
     text: "Познайомились на Product Tank — Олена веде seed-напрямок у Horizon." },
   // depth 0 -> depth 0: a "continues" link, not a merge.
-  { key: "i2", on: { contact: "olena" }, type: "ZOOM", d: 104, parent: "i1",
+  { key: "i2", on: { contact: "olena" }, type: "CALL", d: 104, parent: "i1",
     text: "Дзвінок з Оленою щодо метрик: retention їй цікавий, просить когорти." },
-  { key: "i3", on: { conn: "olena_maksym" }, type: "NOTE", d: 96, parent: "i2",
+  { key: "i3", on: { conn: "olena_maksym" }, type: "INTRO", d: 96, parent: "i2",
     text: "Олена пообіцяла познайомити з Максимом — він робить логістику й шукає той самий раунд." },
-  { key: "i4", on: { conn: "maksym_iryna" }, type: "NOTE", d: 88, parent: "i3",
+  { key: "i4", on: { conn: "maksym_iryna" }, type: "MEMO", d: 88, parent: "i3",
     text: "Максим передав деталі Ірині у Northwind — там своя потреба в інтеграції." },
-  { key: "i5", on: { conn: "iryna_sarah" }, type: "NOTE", d: 80, parent: "i4",
+  { key: "i5", on: { conn: "iryna_sarah" }, type: "MEMO", d: 80, parent: "i4",
     text: "Ірина винесла питання на Sarah Johnson — рішення тепер за нею." },
   // depth 4 — past the depth palette, which clamps on purpose.
-  { key: "i6", on: { conn: "sarah_emily" }, type: "NOTE", d: 72, parent: "i5",
+  { key: "i6", on: { conn: "sarah_emily" }, type: "MEMO", d: 72, parent: "i5",
     text: "Sarah залучила Emily Chen з боку партнерств." },
   // merge from depth 3 back to me
-  { key: "i7", on: { contact: "sarah" }, type: "MEET", d: 64, parent: "i5",
+  { key: "i7", on: { contact: "sarah" }, type: "MEETING", d: 64, parent: "i5",
     text: "Спільний міт із Sarah — прийшло через Олену, хоча я з Іриною жодного разу не спілкувався." },
   // merge from depth 4 back to me
   { key: "i8", on: { contact: "emily" }, type: "CALL", d: 56, parent: "i6",
     text: "Emily погодилась розглянути co-marketing після демо." },
 
   // ---- Thread 2: hiring — its own root, its own shallow merge.
-  { key: "i9", on: { contact: "dmytro" }, type: "MEET", d: 50, parent: null,
+  { key: "i9", on: { contact: "dmytro" }, type: "MEETING", d: 50, parent: null,
     text: "Зустріч з Дмитром щодо найму двох сеньйорів." },
-  { key: "i10", on: { conn: "dmytro_bohdan" }, type: "NOTE", d: 44, parent: "i9",
+  { key: "i10", on: { conn: "dmytro_bohdan" }, type: "MEMO", d: 44, parent: "i9",
     text: "Дмитро рекомендував Богдана — працювали разом три роки." },
-  { key: "i11", on: { contact: "bohdan" }, type: "ZOOM", d: 38, parent: "i10",
+  { key: "i11", on: { contact: "bohdan" }, type: "CALL", d: 38, parent: "i10",
     text: "Співбесіда з Богданом. Сильний бекенд, хоче проєкт із впливом." },
 
   // ---- Edge case: an event I was not part of and never linked to anything.
   // Renders with a root terminator instead of floating unattached.
-  { key: "i12", on: { conn: "sophie_ihor" }, type: "NOTE", d: 30, parent: null,
+  { key: "i12", on: { conn: "sophie_ihor" }, type: "WORKSHOP", d: 30, parent: null,
     text: "Sophie та Ігор домовились про спільний проєкт — записав, бо результат мене стосується." },
 
   // ---- Edge case: a link that points BACKWARDS in time. i13 is older than its
   // parent i14, which only becomes possible once an event can be re-pointed.
-  { key: "i13", on: { contact: "ihor" }, type: "NOTE", d: 26, parent: "i14",
+  { key: "i13", on: { contact: "ihor" }, type: "MEMO", d: 26, parent: "i14",
     text: "Ігор попросив roadmap — уже після того, як Sophie про нього розповіла." },
-  { key: "i14", on: { contact: "sophie" }, type: "MEET", d: 20, parent: null,
+  { key: "i14", on: { contact: "sophie" }, type: "MEETING", d: 20, parent: null,
     text: "Зустріч із Sophie: показала макети, обговорили дизайн-систему." },
 
   // ---- Edge case: one dense day. More same-day events than the canvas has lanes,
   // which is what forces the history graph to bundle them into an "N events" pack.
   { key: "d1", on: { contact: "olena" }, type: "CALL", d: 9, parent: null, text: "Швидкий дзвінок Олені — уточнив дату демо." },
-  { key: "d2", on: { contact: "maksym" }, type: "OFFLINE", d: 9, parent: null, text: "Каву з Максимом, обговорили його раунд." },
-  { key: "d3", on: { contact: "iryna" }, type: "ZOOM", d: 9, parent: null, text: "Ірина показала їхній інтеграційний беклог." },
-  { key: "d4", on: { contact: "bohdan" }, type: "NOTE", d: 9, parent: null, text: "Богдан надіслав тестове — зроблено акуратно." },
-  { key: "d5", on: { contact: "anastasiia" }, type: "MEET", d: 9, parent: null, text: "Перша зустріч з Анастасією — партнерства фонду." },
+  { key: "d2", on: { contact: "maksym" }, type: "MEETING", d: 9, parent: null, text: "Каву з Максимом, обговорили його раунд." },
+  { key: "d3", on: { contact: "iryna" }, type: "CALL", d: 9, parent: null, text: "Ірина показала їхній інтеграційний беклог." },
+  { key: "d4", on: { contact: "bohdan" }, type: "EMAIL", d: 9, parent: null, text: "Богдан надіслав тестове — зроблено акуратно." },
+  { key: "d5", on: { contact: "anastasiia" }, type: "MEETING", d: 9, parent: null, text: "Перша зустріч з Анастасією — партнерства фонду." },
   { key: "d6", on: { contact: "sophie" }, type: "CALL", d: 9, parent: null, text: "Sophie уточнила обсяг дизайн-роботи." },
 
   // ---- Edge case: the longest note in the set.
-  { key: "long", on: { contact: "anastasiia" }, type: "NOTE", d: 6, parent: "d5", text: LONG_TEXT },
+  { key: "long", on: { contact: "anastasiia" }, type: "MEMO", d: 6, parent: "d5", text: LONG_TEXT },
 
   // ---- Edge case: a contact whose only event is a bare one-liner.
-  { key: "vik", on: { contact: "viktor" }, type: "NOTE", d: 4, parent: null, text: "Коротка розмова на конференції." },
+  { key: "vik", on: { contact: "viktor" }, type: "MEMO", d: 4, parent: null, text: "Коротка розмова на конференції." },
 
   // ---- Follow-ups. Two land at the same depth in one cluster, which is exactly
   // the case where markers used to stack on identical coordinates.
-  { key: "f1", on: { contact: "olena" }, type: "ZOOM", d: 3, parent: null,
+  { key: "f1", on: { contact: "olena" }, type: "CALL", d: 3, parent: null,
     text: "Олена попросила фінмодель до наступної зустрічі.",
     followUp: "Надіслати фінмодель і когортний аналіз", followUpInDays: 5 },
   { key: "f2", on: { contact: "sarah" }, type: "CALL", d: 3, parent: null,
     text: "Sarah хоче технічне демо для своєї команди.",
     followUp: "Провести технічне демо для команди Sarah", followUpInDays: 9 },
-  { key: "f3", on: { conn: "iryna_sarah" }, type: "NOTE", d: 2, parent: null,
+  { key: "f3", on: { conn: "iryna_sarah" }, type: "MEMO", d: 2, parent: null,
     text: "Ірина і Sarah узгоджують формат пілоту.",
     followUp: "Дізнатись у Ірини про підсумок пілоту", followUpInDays: 14 },
   // Edge case: a follow-up already in the past — must NOT appear as upcoming.
-  { key: "f4", on: { contact: "maksym" }, type: "NOTE", d: 40, parent: null,
+  { key: "f4", on: { contact: "maksym" }, type: "MEMO", d: 40, parent: null,
     text: "Максим просив познайомити з юристом.",
     followUp: "Познайомити Максима з Kolo Partners", followUpInDays: -12 },
 ];
@@ -323,10 +323,20 @@ async function seedAccount(client, email, slot) {
     `${CONNECTIONS.length} connections, ${INTERACTIONS.length} interactions`);
 }
 
-const targets = process.argv[2] ? [process.argv[2]] : DEFAULT_ACCOUNTS;
+// Usage: node seed-demo.mjs [email [slot]]
+// slot defaults to the email's index in DEFAULT_ACCOUNTS (or 0 for one-off calls).
+// Pass an explicit slot to avoid id collisions with other seeded accounts.
+let targets;
+if (process.argv[2]) {
+  const email = process.argv[2];
+  const slot = process.argv[3] ?? `a${DEFAULT_ACCOUNTS.indexOf(email) >= 0 ? DEFAULT_ACCOUNTS.indexOf(email) : DEFAULT_ACCOUNTS.length}`;
+  targets = [{ email, slot }];
+} else {
+  targets = DEFAULT_ACCOUNTS.map((email, i) => ({ email, slot: `a${i}` }));
+}
 const client = new pg.Client({ connectionString: CONNECTION_STRING });
 await client.connect();
 console.log("seeding demo data:");
-for (const [i, email] of targets.entries()) await seedAccount(client, email, `a${i}`);
+for (const { email, slot } of targets) await seedAccount(client, email, slot);
 await client.end();
 console.log("done");

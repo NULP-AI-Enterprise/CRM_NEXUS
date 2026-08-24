@@ -1,10 +1,18 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Plus, Search } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import {
+  ListHeader,
+  AddButton,
+  FilterBar,
+  SearchField,
+  FilterSelect,
+  FilterMeta,
+  ListEmpty,
+  EntityGlyph,
+  HEADER_TINT,
+} from "@/components/layout/list-chrome";
 import { ContactCard } from "@/components/dashboard/contact-card";
 import { ContactFormDialog } from "@/components/contacts/contact-form-dialog";
 import { useTranslation } from "@/lib/i18n/context";
@@ -74,95 +82,61 @@ export function ContactsPageView({ contacts, companies, communities }: ContactsP
 
   return (
     <div className="flex flex-col gap-4 pb-12">
-      <div className="flex items-center justify-between gap-2">
-        <h1 className="font-heading text-lg font-semibold text-foreground">
-          {t("dashboard.tab.contacts")} <span className="text-sm font-normal text-muted-foreground">({contacts.length})</span>
-        </h1>
-        <Button
-          size="sm"
-          onClick={() => setIsNewContactOpen(true)}
-          className="h-7 px-3 text-xs bg-secondary hover:bg-secondary/70 text-secondary-foreground gap-1.5 rounded-md"
-        >
-          <Plus className="size-3" />
-          {t("dashboard.newContact")}
-        </Button>
-      </div>
+      <ListHeader
+        icon={EntityGlyph.people()}
+        tint={HEADER_TINT.people}
+        title={t("dashboard.tab.contacts")}
+        count={contacts.length}
+        action={<AddButton onClick={() => setIsNewContactOpen(true)}>{t("dashboard.newContact")}</AddButton>}
+      />
 
-      <div className="flex flex-wrap items-center gap-2 rounded-xl border border-border bg-card p-2.5">
-        <div className="relative flex-1 min-w-[200px]">
-          <Search className="absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder={t("filters.searchContacts")}
-            className="h-8 border-border bg-muted pl-8 text-xs"
-          />
-        </div>
-        <select
-          value={category}
-          onChange={(e) => setCategory(e.target.value as ContactCategory | "ALL")}
-          className="h-8 rounded-md border border-border bg-muted px-2 text-xs text-foreground"
-        >
+      <FilterBar>
+        <SearchField value={query} onChange={setQuery} placeholder={t("filters.searchContacts")} />
+        <FilterSelect value={category} onChange={(e) => setCategory(e.target.value as ContactCategory | "ALL")}>
           <option value="ALL">{t("filters.allCategories")}</option>
           {(["VIP", "INVESTOR", "LEAD", "COLLEAGUE", "FRIEND", "HR", "OTHER"] as ContactCategory[]).map((cat) => (
             <option key={cat} value={cat}>
               {t(`category.${cat}`)}
             </option>
           ))}
-        </select>
+        </FilterSelect>
         {temperaments.length > 0 && (
-          <select
-            value={temperament}
-            onChange={(e) => setTemperament(e.target.value)}
-            className="h-8 rounded-md border border-border bg-muted px-2 text-xs text-foreground"
-          >
+          <FilterSelect value={temperament} onChange={(e) => setTemperament(e.target.value)}>
             <option value="ALL">{t("filters.allTemperaments")}</option>
             {temperaments.map((v) => (
               <option key={v} value={v}>
                 {v}
               </option>
             ))}
-          </select>
+          </FilterSelect>
         )}
         {locations.length > 0 && (
-          <select
-            value={location}
-            onChange={(e) => setLocation(e.target.value)}
-            className="h-8 rounded-md border border-border bg-muted px-2 text-xs text-foreground"
-          >
+          <FilterSelect value={location} onChange={(e) => setLocation(e.target.value)}>
             <option value="ALL">{t("filters.allLocations")}</option>
             {locations.map((v) => (
               <option key={v} value={v}>
                 {v}
               </option>
             ))}
-          </select>
+          </FilterSelect>
         )}
-        <select
-          value={sort}
-          onChange={(e) => setSort(e.target.value as SortOption)}
-          className="h-8 rounded-md border border-border bg-muted px-2 text-xs text-foreground"
-        >
+        <FilterSelect value={sort} onChange={(e) => setSort(e.target.value as SortOption)}>
           <option value="score">{t("filters.sort.score")}</option>
           <option value="name">{t("filters.sort.name")}</option>
           <option value="recent">{t("filters.sort.recent")}</option>
-        </select>
-        <div className="ml-auto flex items-center gap-2 border-l border-border pl-2.5 text-[11px] text-muted-foreground">
-          <span>{t("filters.results", { count: filteredContacts.length })}</span>
-          {isFiltered && (
-            <button onClick={resetFilters} className="font-semibold text-accent hover:underline">
-              {t("filters.reset")}
-            </button>
-          )}
-        </div>
-      </div>
+        </FilterSelect>
+        <FilterMeta
+          resultLabel={t("filters.results", { count: filteredContacts.length })}
+          isFiltered={isFiltered}
+          onReset={resetFilters}
+          resetLabel={t("filters.reset")}
+        />
+      </FilterBar>
 
       {filteredContacts.length === 0 ? (
-        <p className="rounded-xl border border-dashed border-border bg-muted p-8 text-center text-xs text-muted-foreground">
-          {t("filters.empty")}
-        </p>
+        <ListEmpty>{t("filters.empty")}</ListEmpty>
       ) : (
-        <div className="grid gap-3.5" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(230px, 1fr))" }}>
+        <div className="grid gap-3.5" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))" }}>
           {filteredContacts.map((contact) => (
             <ContactCard key={contact.id} contact={contact} />
           ))}

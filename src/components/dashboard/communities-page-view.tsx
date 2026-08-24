@@ -1,10 +1,17 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Plus, Search } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import {
+  ListHeader,
+  AddButton,
+  FilterBar,
+  SearchField,
+  FilterMeta,
+  ListEmpty,
+  EntityGlyph,
+  HEADER_TINT,
+} from "@/components/layout/list-chrome";
 import { CommunityAccordion } from "@/components/dashboard/community-accordion";
 import { CommunityFormDialog } from "@/components/dashboard/community-form-dialog";
 import { useTranslation } from "@/lib/i18n/context";
@@ -25,38 +32,26 @@ export function CommunitiesPageView({ communities }: { communities: CommunityWit
 
   return (
     <div className="flex flex-col gap-4 pb-12">
-      <div className="flex items-center justify-between gap-2">
-        <h1 className="font-heading text-lg font-semibold text-foreground">
-          {t("dashboard.tab.communities")}{" "}
-          <span className="text-sm font-normal text-muted-foreground">({communities.length})</span>
-        </h1>
-        <Button
-          size="sm"
-          onClick={() => setIsNewCommunityOpen(true)}
-          className="h-7 px-3 text-xs bg-secondary hover:bg-secondary/70 text-secondary-foreground gap-1.5 rounded-md"
-        >
-          <Plus className="size-3" />
-          {t("dashboard.newCommunity")}
-        </Button>
-      </div>
+      <ListHeader
+        icon={EntityGlyph.communities()}
+        tint={HEADER_TINT.communities}
+        title={t("dashboard.tab.communities")}
+        count={communities.length}
+        action={<AddButton onClick={() => setIsNewCommunityOpen(true)}>{t("dashboard.newCommunity")}</AddButton>}
+      />
 
-      <div className="flex flex-wrap items-center gap-2 rounded-xl border border-border bg-card p-2.5">
-        <div className="relative flex-1 min-w-[200px]">
-          <Search className="absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder={t("filters.searchCommunities")}
-            className="h-8 border-border bg-muted pl-8 text-xs"
-          />
-        </div>
-        <div className="ml-auto text-[11px] text-muted-foreground">{t("filters.results", { count: filteredCommunities.length })}</div>
-      </div>
+      <FilterBar>
+        <SearchField value={query} onChange={setQuery} placeholder={t("filters.searchCommunities")} />
+        <FilterMeta
+          resultLabel={t("filters.results", { count: filteredCommunities.length })}
+          isFiltered={query.trim() !== ""}
+          onReset={() => setQuery("")}
+          resetLabel={t("filters.reset")}
+        />
+      </FilterBar>
 
       {filteredCommunities.length === 0 && query.trim() !== "" ? (
-        <p className="rounded-xl border border-dashed border-border bg-muted p-8 text-center text-xs text-muted-foreground">
-          {t("filters.empty")}
-        </p>
+        <ListEmpty>{t("filters.empty")}</ListEmpty>
       ) : (
         <CommunityAccordion communities={filteredCommunities} />
       )}

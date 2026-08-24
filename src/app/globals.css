@@ -62,6 +62,12 @@
 }
 
 :root {
+  /* Instrument Sans (latin) first for a pixel-perfect match to the reference;
+     Onest carries Cyrillic where Instrument Sans has no glyphs. */
+  --font-sans: var(--font-instrument), var(--font-onest), system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-heading: var(--font-instrument), var(--font-onest), system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: var(--font-mono-ibm), "IBM Plex Mono", ui-monospace, "SFMono-Regular", monospace;
+
   --background: #f6f6f4;
   --foreground: #1b1d21;
   --card: #ffffff;
@@ -143,6 +149,17 @@
     letter-spacing: -0.01em;
     font-weight: 600;
   }
+}
+
+/* Reference-template "kicker": IBM Plex Mono, tiny, wide-tracked, uppercase.
+   Used for section labels, card titles, dates, counters and badges throughout
+   the Weave design. Font-size is overridable per use (the template ranges 9–11px). */
+.kicker {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #a6a6a0;
 }
 
 /* Weave — quiet neutral surface, subtle shadows, bright accent dots */

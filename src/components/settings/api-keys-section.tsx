@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import { format } from "date-fns";
 import { uk, enUS } from "date-fns/locale";
-import { KeyRound, Loader2, Plus, Copy, Check } from "lucide-react";
+import { KeyRound, Loader2, Plus, Copy, Check, Plug, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
 
 import {
@@ -34,15 +34,34 @@ type ApiKeyRow = Omit<ApiKeySummary, "expiresAt" | "lastUsedAt" | "revokedAt" | 
   createdAt: string | Date;
 };
 
-export function ApiKeysSection({ initialKeys }: { initialKeys: ApiKeySummary[] }) {
+function buildMcpConfig(endpoint: string, rawKeyOrPlaceholder: string) {
+  return JSON.stringify(
+    {
+      mcpServers: {
+        "nexus-crm": {
+          type: "http",
+          url: endpoint,
+          headers: { Authorization: `Bearer ${rawKeyOrPlaceholder}` },
+        },
+      },
+    },
+    null,
+    2,
+  );
+}
+
+export function ApiKeysSection({ initialKeys, mcpEndpoint }: { initialKeys: ApiKeySummary[]; mcpEndpoint: string }) {
   const { t, locale } = useTranslation();
   const dateLocale = locale === "uk" ? uk : enUS;
 
   const [keys, setKeys] = useState<ApiKeyRow[]>(initialKeys);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [isSetupOpen, setIsSetupOpen] = useState(false);
   const [revokeTarget, setRevokeTarget] = useState<ApiKeyRow | null>(null);
   const [revealedKey, setRevealedKey] = useState<{ name: string; rawKey: string } | null>(null);
   const [copied, setCopied] = useState(false);
+  const [configCopied, setConfigCopied] = useState(false);
+  const [showReadyConfig, setShowReadyConfig] = useState(false);
 
   const [name, setName] = useState("");
   const [scope, setScope] = useState<ApiKeyScope>("READ");
@@ -82,6 +101,8 @@ export function ApiKeysSection({ initialKeys }: { initialKeys: ApiKeySummary[] }
         resetForm();
         setRevealedKey({ name: data.apiKey.name, rawKey: data.rawKey });
         setCopied(false);
+        setConfigCopied(false);
+        setShowReadyConfig(false);
       } catch (err) {
         toast.error(err instanceof Error ? err.message : t("common.unknownError"));
       }
@@ -113,6 +134,16 @@ export function ApiKeysSection({ initialKeys }: { initialKeys: ApiKeySummary[] }
     }
   };
 
+  const handleCopyConfig = async (config: string, isReady: boolean) => {
+    try {
+      await navigator.clipboard.writeText(config);
+      if (isReady) setConfigCopied(true);
+      toast.success(t("settings.apiKeys.setupConfigCopied"));
+    } catch {
+      toast.error(t("common.unknownError"));
+    }
+  };
+
   return (
     <div className="rounded-xl border border-border bg-card p-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -127,14 +158,25 @@ export function ApiKeysSection({ initialKeys }: { initialKeys: ApiKeySummary[] }
             <p className="text-xs text-muted-foreground">{t("settings.apiKeys.description")}</p>
           </div>
         </div>
-        <Button
-          size="sm"
-          onClick={() => setIsCreateOpen(true)}
-          className="h-7 px-3 text-xs bg-primary hover:bg-primary/90 text-primary-foreground gap-1.5 rounded-md"
-        >
-          <Plus className="size-3" />
-          {t("settings.apiKeys.generate")}
-        </Button>
+        <div className="flex items-center gap-1.5">
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => setIsSetupOpen(true)}
+            className="h-7 px-3 text-xs border-border bg-card text-muted-foreground hover:text-foreground gap-1.5 rounded-md"
+          >
+            <Plug className="size-3" />
+            {t("settings.apiKeys.howToConnect")}
+          </Button>
+          <Button
+            size="sm"
+            onClick={() => setIsCreateOpen(true)}
+            className="h-7 px-3 text-xs bg-primary hover:bg-primary/90 text-primary-foreground gap-1.5 rounded-md"
+          >
+            <Plus className="size-3" />
+            {t("settings.apiKeys.generate")}
+          </Button>
+        </div>
       </div>
 
       <div className="mt-4 flex flex-col gap-2">
@@ -287,7 +329,7 @@ export function ApiKeysSection({ initialKeys }: { initialKeys: ApiKeySummary[] }
 
       {/* One-time reveal dialog */}
       <Dialog open={Boolean(revealedKey)} onOpenChange={(open) => !open && setRevealedKey(null)}>
-        <DialogContent className="sm:max-w-md border border-border bg-card text-foreground backdrop-blur-2xl shadow-2xl">
+        <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-md border border-border bg-card text-foreground backdrop-blur-2xl shadow-2xl">
           <DialogHeader>
             <DialogTitle className="text-sm font-semibold text-foreground">
               {t("settings.apiKeys.revealTitle")}
@@ -312,10 +354,98 @@ export function ApiKeysSection({ initialKeys }: { initialKeys: ApiKeySummary[] }
             </Button>
           </div>
 
+          {revealedKey && (
+            <div className="flex flex-col gap-1.5">
+              <button
+                type="button"
+                onClick={() => setShowReadyConfig((v) => !v)}
+                className="flex items-center gap-1 text-left text-xs font-medium text-muted-foreground hover:text-foreground"
+              >
+                <ChevronRight className={`size-3 shrink-0 transition-transform ${showReadyConfig ? "rotate-90" : ""}`} />
+                {t("settings.apiKeys.setupConfigLabelReady")}
+              </button>
+              {showReadyConfig && (
+              <div className="relative rounded-md border border-border bg-muted p-3">
+                <pre className="overflow-x-auto text-[11px] font-mono text-foreground">
+                  {buildMcpConfig(mcpEndpoint, revealedKey.rawKey)}
+                </pre>
+                <Button
+                  size="icon"
+                  variant="outline"
+                  onClick={() => handleCopyConfig(buildMcpConfig(mcpEndpoint, revealedKey.rawKey), true)}
+                  className="absolute right-2 top-2 size-7 shrink-0 border-border bg-card text-muted-foreground hover:text-foreground"
+                  title={t("settings.apiKeys.setupCopyConfig")}
+                >
+                  {configCopied ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
+                </Button>
+              </div>
+              )}
+            </div>
+          )}
+
           <DialogFooter className="border-t border-border pt-2.5">
             <Button
               size="sm"
               onClick={() => setRevealedKey(null)}
+              className="bg-primary hover:bg-primary/90 text-primary-foreground h-7 text-xs font-medium"
+            >
+              {t("settings.apiKeys.done")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Generic setup instructions — placeholder key, always available even
+          after the one-time reveal dialog above has been dismissed. */}
+      <Dialog open={isSetupOpen} onOpenChange={setIsSetupOpen}>
+        <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-lg border border-border bg-card text-foreground backdrop-blur-2xl shadow-2xl">
+          <DialogHeader>
+            <DialogTitle className="text-sm font-semibold text-foreground">
+              {t("settings.apiKeys.setupTitle")}
+            </DialogTitle>
+            <DialogDescription className="text-xs text-muted-foreground">
+              {t("settings.apiKeys.setupIntro")}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="flex flex-col gap-3.5 py-1 text-xs">
+            <div className="flex flex-col gap-1">
+              <Label className="text-xs font-medium text-muted-foreground">{t("settings.apiKeys.setupEndpoint")}</Label>
+              <code className="rounded-md border border-border bg-muted px-2.5 py-1.5 text-[11px] font-mono text-foreground break-all">
+                {mcpEndpoint}
+              </code>
+            </div>
+            <div className="flex flex-col gap-1">
+              <Label className="text-xs font-medium text-muted-foreground">{t("settings.apiKeys.setupHeader")}</Label>
+              <code className="rounded-md border border-border bg-muted px-2.5 py-1.5 text-[11px] font-mono text-foreground break-all">
+                Authorization: Bearer &lt;your-api-key&gt;
+              </code>
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <Label className="text-xs font-medium text-muted-foreground">{t("settings.apiKeys.setupConfigLabel")}</Label>
+              <div className="relative rounded-md border border-border bg-muted p-3">
+                <pre className="overflow-x-auto text-[11px] font-mono text-foreground">
+                  {buildMcpConfig(mcpEndpoint, "<your-api-key>")}
+                </pre>
+                <Button
+                  size="icon"
+                  variant="outline"
+                  onClick={() => handleCopyConfig(buildMcpConfig(mcpEndpoint, "<your-api-key>"), false)}
+                  className="absolute right-2 top-2 size-7 shrink-0 border-border bg-card text-muted-foreground hover:text-foreground"
+                  title={t("settings.apiKeys.setupCopyConfig")}
+                >
+                  <Copy className="size-3.5" />
+                </Button>
+              </div>
+              <p className="text-[11px] text-muted-foreground">{t("settings.apiKeys.setupPlaceholderNote")}</p>
+            </div>
+            <p className="text-[11px] text-muted-foreground">{t("settings.apiKeys.setupToolsNote")}</p>
+          </div>
+
+          <DialogFooter className="border-t border-border pt-2.5">
+            <Button
+              size="sm"
+              onClick={() => setIsSetupOpen(false)}
               className="bg-primary hover:bg-primary/90 text-primary-foreground h-7 text-xs font-medium"
             >
               {t("settings.apiKeys.done")}

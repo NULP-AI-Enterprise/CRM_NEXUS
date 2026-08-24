@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useTransition } from "react";
 import { format } from "date-fns";
 import { uk, enUS } from "date-fns/locale";
-import { Crosshair, GitBranch, Loader2, Maximize2, Minus, Pencil, Plus, Trash2, X } from "lucide-react";
+import { Crosshair, GitBranch, Loader2, Maximize2, Minus, Move, Pencil, Plus, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -52,14 +52,25 @@ type LinkKind = "branch" | "merge" | "continues";
  * run backwards once an event is re-pointed at a parent logged after it —
  * a plain cubic then doubles back through its own start and reads as a
  * scribble. Route those under the rows instead, which states plainly that
- * this link runs against the timeline. */
-function edgePath(x1: number, y1: number, x2: number, y2: number): string {
+ * this link runs against the timeline. `lane` staggers the under-row detour
+ * by a few px per backward link so two of them sharing a row don't trace the
+ * exact same horizontal segment and read as one. */
+function edgePath(x1: number, y1: number, x2: number, y2: number, lane = 0): string {
   if (x2 >= x1) {
     const mid = x1 + (x2 - x1) / 2;
     return `M ${x1} ${y1} C ${mid} ${y1}, ${mid} ${y2}, ${x2} ${y2}`;
   }
-  const under = Math.max(y1, y2) + 34;
+  const under = Math.max(y1, y2) + 34 + lane * 10;
   return `M ${x1} ${y1} C ${x1 + 34} ${y1}, ${x1 + 34} ${under}, ${x1} ${under} L ${x2} ${under} C ${x2 - 34} ${under}, ${x2 - 34} ${y2}, ${x2} ${y2}`;
+}
+
+/** A live drag ghost tracks the pointer pixel-by-pixel in any direction, so
+ * `edgePath`'s "route backward links under the rows" treatment (designed for
+ * a *committed* link) would make the ghost jump and loop as it crosses its
+ * own start — a plain midpoint cubic stays smooth regardless of direction. */
+function ghostCurve(x1: number, y1: number, x2: number, y2: number): string {
+  const midx = x1 + (x2 - x1) / 2;
+  return `M ${x1} ${y1} C ${midx} ${y1}, ${midx} ${y2}, ${x2} ${y2}`;
 }
 
 /** Where to POST a new branch off `event` — reuses the exact same endpoints
@@ -113,8 +124,13 @@ function truncate(text: string, max: number): string {
   return text.length > max ? `${text.slice(0, max)}…` : text;
 }
 
+/** Local-time month key, matching the local-time label formatted for the same
+ * gridline below — slicing the raw UTC ISO string instead would classify an
+ * event into a different month than its own displayed label near midnight in
+ * any timezone ahead of UTC. */
 function monthKey(iso: string): string {
-  return iso.slice(0, 7);
+  const d = new Date(iso);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
 }
 
 export function ClusterWorkflowDiagram({
@@ -157,6 +173,77 @@ export function ClusterWorkflowDiagram({
   /** Set while a drag is in flight; read by the node click handler so that
    * finishing a pan on top of a node doesn't also select it. */
   const panRef = useRef<{ id: number; x: number; y: number; moved: boolean } | null>(null);
+
+  // ---- graphical connectors: a small port on each side of a card ---------
+  // Node editors (React Flow, Blender, Unreal Blueprints, Node-RED) settle
+  // this the same way for a reason: dragging the *body* of a node always
+  // means "move it", and dragging a small dedicated *port* always means
+  // "connect it" — never both from the same gesture. This diagram's node
+  // positions are entirely derived (column = chronology, row = depth), so
+  // "move the body" has no meaning here at all; the earlier build let a
+  // whole-card drag also *reparent* it, which meant an ordinary shaky click
+  // could restructure history by accident. Ports fix that at the source:
+  // the card body now only ever selects or opens edit-in-place; every
+  // structural change starts from one of the two ports below.
+  //   left port  ("input")  — this event's OWN parent link. Drag it onto
+  //                           another card to change what this branched
+  //                           from; drag it to empty space to detach.
+  //   right port ("output") — drag it onto another card to make THAT card
+  //                           branch from this one; drag it to empty space
+  //                           to compose a brand new branch here.
+  interface PortDragState {
+    side: "left" | "right";
+    sourceId: string;
+    pointerId: number;
+    originX: number;
+    originY: number;
+    ghostX: number;
+    ghostY: number;
+    overNodeId: string | null;
+    valid: boolean | null;
+  }
+  const portDragRef = useRef<PortDragState | null>(null);
+  const [portDragVisual, setPortDragVisual] = useState<PortDragState | null>(null);
+  const [branchPopover, setBranchPopover] = useState<{ sourceId: string; x: number; y: number } | null>(null);
+  const [branchPopoverText, setBranchPopoverText] = useState("");
+
+  // ---- body drag: pick the whole card up and set it on another branch ---
+  // The ports above cover precise rewiring; this covers the bigger, coarser
+  // gesture of just grabbing a card and moving it onto a different level —
+  // GitKraken's own "drag a commit to rebase" move. A plain click still has
+  // to keep selecting the card (see the stopPropagation note below), so this
+  // needs the same move-distance threshold used for canvas panning: only a
+  // real drag commits anything, a stationary click falls through untouched.
+  interface BodyDragState {
+    sourceId: string;
+    pointerId: number;
+    moved: boolean;
+    startClientX: number;
+    startClientY: number;
+    originCx: number;
+    originCy: number;
+    ghostX: number;
+    ghostY: number;
+    overNodeId: string | null;
+    valid: boolean | null;
+  }
+  const bodyDragRef = useRef<BodyDragState | null>(null);
+  const [bodyDragVisual, setBodyDragVisual] = useState<BodyDragState | null>(null);
+  /** True for one frame after a real body-drag ends, so the synthetic click
+   * that follows a pointerup doesn't also select whatever it landed on —
+   * the same technique already used for `panRef`. */
+  const bodyDragJustEndedRef = useRef(false);
+
+  /** Screen point -> content-space point (undoes the viewport's pan/zoom),
+   * the coordinate system every node's `x`/`y` already lives in. */
+  const toContent = useCallback(
+    (clientX: number, clientY: number) => {
+      const rect = viewportRef.current?.getBoundingClientRect();
+      if (!rect) return { x: 0, y: 0 };
+      return { x: (clientX - rect.left - view.x) / view.k, y: (clientY - rect.top - view.y) / view.k };
+    },
+    [view],
+  );
 
   useLayoutEffect(() => {
     const el = viewportRef.current;
@@ -302,11 +389,15 @@ export function ClusterWorkflowDiagram({
     // from shared participants or recency would draw a causal claim the data
     // does not make, in a tool whose whole job is remembering what actually
     // happened between real people.
-    const links: Array<{ id: string; kind: LinkKind; color: string; x1: number; y1: number; x2: number; y2: number }> = [];
+    const links: Array<{ id: string; kind: LinkKind; color: string; x1: number; y1: number; x2: number; y2: number; backwardLane: number }> = [];
     const terminators: Array<{ id: string; kind: "root" | "broken"; x: number; y: number; color: string }> = [];
 
     const mainIds = new Set(mainNodes.map((n) => n.event.id));
     const spineFollowsFirst = mainNodes.length > 0 ? mainNodes[0]!.event.id : null;
+    // Each backward link (child logged before its parent) gets its own lane so
+    // several of them don't route through the exact same under-row segment —
+    // see edgePath.
+    let backwardLaneCount = 0;
 
     for (const n of nodes) {
       const parent = n.event.parentInteractionId ? nodeById.get(n.event.parentInteractionId) : undefined;
@@ -315,14 +406,17 @@ export function ClusterWorkflowDiagram({
         // equal-depth case in with "merge" claimed a chain had come back to me
         // when it had merely continued on the row it was already on.
         const kind: LinkKind = n.depth > parent.depth ? "branch" : n.depth < parent.depth ? "merge" : "continues";
+        const x1 = parent.x + NODE_W;
+        const x2 = n.x;
         links.push({
           id: n.event.id,
           kind,
           color: depthColor(Math.max(n.depth, parent.depth)),
-          x1: parent.x + NODE_W,
+          x1,
           y1: parent.cy,
-          x2: n.x,
+          x2,
           y2: n.cy,
+          backwardLane: x2 < x1 ? backwardLaneCount++ : 0,
         });
         continue;
       }
@@ -383,12 +477,237 @@ export function ClusterWorkflowDiagram({
   );
 
   const selectEvent = (id: string) => {
-    // A pan that happens to end over a node is not a click on it.
-    if (panRef.current?.moved) return;
+    // A pan — or a card drag — that happens to end over a node is not a click on it.
+    if (panRef.current?.moved || bodyDragJustEndedRef.current) return;
     setSelectedEventId(id);
     setIsEditingText(false);
     setIsAddingBranch(false);
     setIsRelinking(false);
+  };
+
+  /** Holds whichever drag's window listeners are currently attached, so they
+   * can be torn down if the dialog closes mid-drag (Escape, clicking the
+   * backdrop) — without this, a drag abandoned that way would leave its
+   * `pointermove`/`pointerup` listeners on `window` forever, since those are
+   * only ever removed by the pointerup/pointercancel they're listening for. */
+  const activeDragCleanupRef = useRef<(() => void) | null>(null);
+  useEffect(() => {
+    if (open) return;
+    activeDragCleanupRef.current?.();
+    activeDragCleanupRef.current = null;
+  }, [open]);
+
+  /** Hit-test a content-space point against every node's box — used to find
+   * a live drag's drop target and to reject a branch-handle drop that landed
+   * on a card instead of empty space. */
+  const nodeAt = useCallback(
+    (x: number, y: number) => {
+      if (!layout) return null;
+      return layout.nodes.find((n) => x >= n.x && x <= n.x + NODE_W && y >= n.y && y <= n.y + NODE_H) ?? null;
+    },
+    [layout],
+  );
+
+  /** One handler for both ports — the only difference between "left" and
+   * "right" is which end owns the resulting link (see the block comment on
+   * `PortDragState` above). Listens on `window` rather than the small SVG
+   * port itself for the drag's duration: `setPointerCapture` on an SVG
+   * element is attempted as a best-effort (harmless where it works), but
+   * correctness never depends on it — WebKit's SVG pointer-capture support
+   * has real gaps, and once capture silently fails, a port only ~16px
+   * across means the first couple of pixels of real cursor movement leave
+   * it and every further pointermove/pointerup simply stops arriving.
+   * Window-level listeners are the standard, engine-independent fix. */
+  const handlePortPointerDown = (n: { event: TimelineEvent; x: number; cy: number }, side: "left" | "right") => (
+    e: React.PointerEvent<SVGGElement>,
+  ) => {
+    e.stopPropagation();
+    e.preventDefault();
+    // Self-heal: if a previous drag's pointerup was somehow missed (e.g. the
+    // pointer was released outside the browser window entirely, which a
+    // `window` listener can't observe), starting a fresh one shouldn't be
+    // blocked by stale state from it — clear it first.
+    activeDragCleanupRef.current?.();
+    try {
+      e.currentTarget.setPointerCapture(e.pointerId);
+    } catch {
+      /* best-effort only — see comment above */
+    }
+    const originX = side === "right" ? n.x + NODE_W : n.x;
+    const state: PortDragState = {
+      side,
+      sourceId: n.event.id,
+      pointerId: e.pointerId,
+      originX,
+      originY: n.cy,
+      ghostX: originX,
+      ghostY: n.cy,
+      overNodeId: null,
+      valid: null,
+    };
+    portDragRef.current = state;
+    setPortDragVisual({ ...state });
+
+    const onMove = (ev: PointerEvent) => {
+      if (ev.pointerId !== state.pointerId) return;
+      const p = toContent(ev.clientX, ev.clientY);
+      state.ghostX = p.x;
+      state.ghostY = p.y;
+      const target = nodeAt(p.x, p.y);
+      const overId = target && target.event.id !== state.sourceId ? target.event.id : null;
+      state.overNodeId = overId;
+      // Right port: the hovered card would become a child of this one, so a
+      // cycle forms if it's already an ancestor. Left port: this card would
+      // become a child of the hovered one, so the check runs the other way.
+      state.valid = overId
+        ? side === "right"
+          ? !wouldCreateCycleLocally(overId, state.sourceId)
+          : !wouldCreateCycleLocally(state.sourceId, overId)
+        : null;
+      setPortDragVisual({ ...state });
+    };
+    const cleanup = () => {
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+      window.removeEventListener("pointercancel", onUp);
+      window.removeEventListener("blur", onBlur);
+      activeDragCleanupRef.current = null;
+    };
+    // A window blur (alt-tab, devtools stealing focus, …) mid-drag cancels
+    // outright rather than committing — surfacing a relink because the user
+    // happened to alt-tab away would be a surprise, not a convenience. It
+    // also stops these listeners from lingering forever, since otherwise
+    // they're only ever removed by the pointerup/pointercancel they wait for.
+    const onBlur = () => {
+      cleanup();
+      portDragRef.current = null;
+      setPortDragVisual(null);
+    };
+    const onUp = (ev: PointerEvent) => {
+      if (ev.pointerId !== state.pointerId) return;
+      cleanup();
+      portDragRef.current = null;
+      setPortDragVisual(null);
+      if (state.overNodeId && state.valid) {
+        const undoLabel = side === "right" ? t("cluster.undo.linkedChild") : t("cluster.undo.relinked");
+        if (side === "right") {
+          relinkEvent(state.overNodeId, state.sourceId, { selectAfter: true, undoLabel });
+        } else {
+          relinkEvent(state.sourceId, state.overNodeId, { selectAfter: true, undoLabel });
+        }
+      } else if (state.overNodeId && state.valid === false) {
+        toast.error(t("cluster.dragCycleError"));
+      } else if (!state.overNodeId) {
+        // Dropped in empty space.
+        if (side === "right") {
+          setBranchPopover({ sourceId: state.sourceId, x: state.ghostX, y: state.ghostY });
+          setBranchPopoverText("");
+        } else {
+          const current = data?.events.find((ev2) => ev2.id === state.sourceId);
+          if (current?.parentInteractionId) {
+            relinkEvent(state.sourceId, null, { selectAfter: true, undoLabel: t("cluster.undo.detached") });
+          }
+        }
+      }
+    };
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+    window.addEventListener("pointercancel", onUp);
+    window.addEventListener("blur", onBlur);
+    activeDragCleanupRef.current = cleanup;
+  };
+
+  /** Pick the whole card up and set it on another one — same drop semantics
+   * as the left port (this card's parent becomes whatever it lands on), just
+   * a coarser, easier-to-grab starting point. `e.stopPropagation()` here is
+   * doing double duty: it's what lets the card be dragged onto a branch at
+   * all, but it's *also* the fix for clicks not registering — without it, a
+   * plain click's pointerdown bubbles to the viewport's own pan handler,
+   * which then sees the pointer move a stray pixel (real mice never sit
+   * perfectly still) and marks it as a pan, so `selectEvent`'s own
+   * `panRef.current?.moved` guard silently discards the click that follows.
+   * Every click on a card was going through that same leak. */
+  const handleBodyPointerDown = (n: { event: TimelineEvent; cx: number; cy: number }) => (e: React.PointerEvent<SVGGElement>) => {
+    if (e.button !== 0 && e.pointerType === "mouse") return;
+    e.stopPropagation();
+    activeDragCleanupRef.current?.();
+    try {
+      e.currentTarget.setPointerCapture(e.pointerId);
+    } catch {
+      /* best-effort only — see the comment on handlePortPointerDown */
+    }
+    const state: BodyDragState = {
+      sourceId: n.event.id,
+      pointerId: e.pointerId,
+      moved: false,
+      startClientX: e.clientX,
+      startClientY: e.clientY,
+      originCx: n.cx,
+      originCy: n.cy,
+      ghostX: n.cx,
+      ghostY: n.cy,
+      overNodeId: null,
+      valid: null,
+    };
+    bodyDragRef.current = state;
+
+    const onMove = (ev: PointerEvent) => {
+      if (ev.pointerId !== state.pointerId) return;
+      const dx = ev.clientX - state.startClientX;
+      const dy = ev.clientY - state.startClientY;
+      // A few px of travel is a click with a shaky hand, not a drag — this
+      // is what keeps a plain click free to fall through to onClick/
+      // onDoubleClick below instead of being swallowed as an aborted drag.
+      if (!state.moved && Math.hypot(dx, dy) < 5) return;
+      state.moved = true;
+      const p = toContent(ev.clientX, ev.clientY);
+      state.ghostX = p.x;
+      state.ghostY = p.y;
+      const target = nodeAt(p.x, p.y);
+      const overId = target && target.event.id !== state.sourceId ? target.event.id : null;
+      state.overNodeId = overId;
+      state.valid = overId ? !wouldCreateCycleLocally(state.sourceId, overId) : null;
+      setBodyDragVisual({ ...state });
+    };
+    const cleanup = () => {
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+      window.removeEventListener("pointercancel", onUp);
+      window.removeEventListener("blur", onBlur);
+      activeDragCleanupRef.current = null;
+    };
+    const onBlur = () => {
+      cleanup();
+      bodyDragRef.current = null;
+      setBodyDragVisual(null);
+    };
+    const onUp = (ev: PointerEvent) => {
+      if (ev.pointerId !== state.pointerId) return;
+      cleanup();
+      bodyDragRef.current = null;
+      setBodyDragVisual(null);
+      if (!state.moved) return; // a plain click — onClick handles it, untouched
+      // Cleared next frame so the click event that follows this pointerup
+      // can still see that a drag just happened (see `selectEvent`).
+      bodyDragJustEndedRef.current = true;
+      requestAnimationFrame(() => {
+        bodyDragJustEndedRef.current = false;
+      });
+      if (state.overNodeId && state.valid) {
+        relinkEvent(state.sourceId, state.overNodeId, { selectAfter: true, undoLabel: t("cluster.undo.relinked") });
+      } else if (state.overNodeId && state.valid === false) {
+        toast.error(t("cluster.dragCycleError"));
+      }
+      // Dropped on empty space: snap back with no action — a body-drag reads
+      // as "move this onto a specific branch", not "detach it", so an
+      // ambiguous drop shouldn't quietly detach anything. The left port
+      // still offers detach as its own explicit, precise gesture.
+    };
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+    window.addEventListener("pointercancel", onUp);
+    window.addEventListener("blur", onBlur);
+    activeDragCleanupRef.current = cleanup;
   };
 
   // ---- viewport controls -------------------------------------------------
@@ -480,15 +799,19 @@ export function ClusterWorkflowDiagram({
     setView(initial);
   }
 
-  /** Re-point (or clear, with null) which event this one branches from — the
-   * only way to correct a wrong link without deleting and re-logging. The
-   * server rejects loops; surface that verbatim rather than a generic error,
-   * since "you picked a descendant" is actionable and nothing else here is. */
-  const handleRelink = (parentId: string | null) => {
-    if (!selectedEvent) return;
+  /** Re-point (or clear, with null) which event a given event branches from —
+   * the shared primitive behind both the picker-driven "Change" button and a
+   * direct drag-to-relink gesture on the canvas. The server rejects loops;
+   * surface that verbatim rather than a generic error, since "you picked a
+   * descendant" is actionable and nothing else here is. */
+  const relinkEvent = (childId: string, parentId: string | null, opts?: { selectAfter?: boolean; undoLabel?: string }) => {
+    // Captured before the request so "Undo" restores exactly what was there,
+    // even if more relinks happen (and get their own undo) before this one
+    // is undone.
+    const previousParentId = data?.events.find((e) => e.id === childId)?.parentInteractionId ?? null;
     startTransition(async () => {
       try {
-        const res = await fetch(`/api/interactions/${selectedEvent.id}`, {
+        const res = await fetch(`/api/interactions/${childId}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ parentInteractionId: parentId }),
@@ -498,22 +821,67 @@ export function ClusterWorkflowDiagram({
           throw new Error(body?.error ?? undefined);
         }
         setIsRelinking(false);
+        if (opts?.selectAfter) setSelectedEventId(childId);
         refetch();
+        // A relink is now one drag, not a deliberate form submission — an
+        // inline Undo (Gmail/Linear/Notion-style) is the right safety net
+        // for a fast, instant action, rather than a confirm dialog on every
+        // drop that would make the whole gesture feel heavy.
+        if (opts?.undoLabel) {
+          toast.success(opts.undoLabel, {
+            action: { label: t("cluster.undo.action"), onClick: () => relinkEvent(childId, previousParentId, { selectAfter: true }) },
+          });
+        }
       } catch (err) {
         toast.error(err instanceof Error && err.message ? err.message : t("cluster.expand.saveError"));
       }
     });
   };
 
+  const handleRelink = (parentId: string | null) => {
+    if (!selectedEvent) return;
+    relinkEvent(selectedEvent.id, parentId);
+  };
+
+  /** Client-side mirror of the server's own cycle guard (`wouldCreateCycle` in
+   * the PATCH route) — used only for live drag feedback (green/red while
+   * hovering a drop target). The server check remains the actual authority;
+   * this one just has to be right often enough that the ghost line doesn't
+   * lie about what's about to happen. */
+  const wouldCreateCycleLocally = useCallback(
+    (childId: string, candidateParentId: string): boolean => {
+      if (!data) return true;
+      if (childId === candidateParentId) return true;
+      const byId = new Map(data.events.map((e) => [e.id, e]));
+      const seen = new Set([candidateParentId]);
+      let cursor: string | null = candidateParentId;
+      while (cursor) {
+        const next: string | null = byId.get(cursor)?.parentInteractionId ?? null;
+        if (!next) return false;
+        if (next === childId) return true;
+        if (seen.has(next)) return false;
+        seen.add(next);
+        cursor = next;
+      }
+      return false;
+    },
+    [data],
+  );
+
   const handleSaveText = () => {
     if (!selectedEvent || !editText.trim()) return;
     startTransition(async () => {
       try {
-        const body: any = { rawText: editText.trim() };
+        const body: Record<string, unknown> = { rawText: editText.trim() };
         if (editType) body.type = editType;
         if (editDate) {
-          const d = new Date(editDate);
-          if (!isNaN(d.getTime())) body.createdAt = d.toISOString();
+          // editDate is a bare "yyyy-MM-dd" from <input type="date">. The Date
+          // constructor parses that as UTC midnight, which reads back as the
+          // previous day in any timezone behind UTC — parse the components as
+          // local time instead, matching the local day the field displayed.
+          const [y, m, d] = editDate.split("-").map(Number);
+          const parsed = new Date(y!, (m ?? 1) - 1, d ?? 1);
+          if (!isNaN(parsed.getTime())) body.createdAt = parsed.toISOString();
         }
         const res = await fetch(`/api/interactions/${selectedEvent.id}`, {
           method: "PATCH",
@@ -541,25 +909,47 @@ export function ClusterWorkflowDiagram({
     }
   };
 
-  const handleAddBranch = () => {
-    if (!selectedEvent || !branchDraft.trim()) return;
-    const target = branchTarget(selectedEvent);
+  /** Shared primitive behind both the panel's "+ Add branch here" form and the
+   * drag-handle-into-empty-space gesture — same POST either way, just a
+   * different entry point for where the text comes from. */
+  const createBranch = (sourceEvent: TimelineEvent, text: string, onSuccess?: () => void) => {
+    if (!text.trim()) return;
+    const target = branchTarget(sourceEvent);
     startTransition(async () => {
       try {
         const res = await fetch(target.url, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(target.body(branchDraft.trim())),
+          body: JSON.stringify(target.body(text.trim())),
         });
         if (!res.ok) throw new Error();
-        setBranchDraft("");
-        setIsAddingBranch(false);
         invalidateBranchParentCache();
         refetch();
+        onSuccess?.();
       } catch {
         toast.error(t("cluster.expand.saveError"));
       }
     });
+  };
+
+  const handleAddBranch = () => {
+    if (!selectedEvent) return;
+    createBranch(selectedEvent, branchDraft, () => {
+      setBranchDraft("");
+      setIsAddingBranch(false);
+    });
+  };
+
+  /** Double-click a card to jump straight into editing it, instead of
+   * click-to-select then hunt for the Edit button in the panel below. */
+  const openInlineEdit = (event: TimelineEvent) => {
+    setSelectedEventId(event.id);
+    setIsAddingBranch(false);
+    setIsRelinking(false);
+    setEditText(event.rawText);
+    setEditType(event.type);
+    setEditDate(format(new Date(event.createdAt), "yyyy-MM-dd"));
+    setIsEditingText(true);
   };
 
   return (
@@ -607,10 +997,10 @@ export function ClusterWorkflowDiagram({
                 </svg>
                 {t("cluster.legend.root")}
               </span>
-              <span className="flex items-center gap-1.5">
-                <GitBranch className="size-3" />
-                {t("cluster.expand.addBranch")}
-              </span>
+            </div>
+            <div className="flex items-center gap-1.5 pb-2 text-[10.5px] text-muted-foreground/80 shrink-0">
+              <Move className="size-3 shrink-0" />
+              <span>{t("cluster.dragHint")}</span>
             </div>
 
             {layout.nodes.length === 0 ? (
@@ -687,7 +1077,7 @@ export function ClusterWorkflowDiagram({
                       {layout.links.map((l) => (
                         <g key={l.id}>
                           <path
-                            d={edgePath(l.x1, l.y1, l.x2, l.y2)}
+                            d={edgePath(l.x1, l.y1, l.x2, l.y2, l.backwardLane)}
                             fill="none"
                             stroke={l.color}
                             strokeWidth={l.kind === "merge" ? 2 : 1.6}
@@ -725,33 +1115,106 @@ export function ClusterWorkflowDiagram({
 
                       {layout.nodes.map((n) => {
                         const selected = selectedEventId === n.event.id;
+                        const isDraggingThisBody = bodyDragVisual?.sourceId === n.event.id;
+                        const bodyDX = isDraggingThisBody ? bodyDragVisual!.ghostX - bodyDragVisual!.originCx : 0;
+                        const bodyDY = isDraggingThisBody ? bodyDragVisual!.ghostY - bodyDragVisual!.originCy : 0;
+                        // A port drag or a body drag can each be hovering this
+                        // card as a drop target — never both at once, since a
+                        // card can't drag onto itself.
+                        const isDropTarget = portDragVisual?.overNodeId === n.event.id || bodyDragVisual?.overNodeId === n.event.id;
+                        const dropValid = portDragVisual?.overNodeId === n.event.id ? portDragVisual.valid : bodyDragVisual?.overNodeId === n.event.id ? bodyDragVisual!.valid : false;
                         return (
-                          <g key={n.event.id} style={{ cursor: "pointer" }} onClick={() => selectEvent(n.event.id)}>
+                          <g
+                            key={n.event.id}
+                            transform={`translate(${bodyDX} ${bodyDY})`}
+                            className={isDraggingThisBody ? "cursor-grabbing" : "group cursor-grab transition-transform duration-300 ease-out"}
+                            onClick={() => selectEvent(n.event.id)}
+                            onDoubleClick={() => openInlineEdit(n.event)}
+                            onPointerDown={handleBodyPointerDown(n)}
+                          >
                             <title>
                               {`${t(`interactionType.${n.event.type}`)} · ${format(new Date(n.event.createdAt), "d MMM yyyy", { locale: dateLocale })}\n${n.parties}\n${n.event.rawText}`}
                             </title>
+                            {isDropTarget && (
+                              <rect
+                                x={n.x - 3}
+                                y={n.y - 3}
+                                width={NODE_W + 6}
+                                height={NODE_H + 6}
+                                rx={12}
+                                fill="none"
+                                stroke={dropValid ? "#43A883" : "#E0645A"}
+                                strokeWidth={1.6}
+                              />
+                            )}
                             <rect
                               x={n.x}
                               y={n.y}
                               width={NODE_W}
                               height={NODE_H}
                               rx={9}
-                              fill="var(--card)"
-                              stroke={n.color}
-                              strokeWidth={selected ? 2.2 : 1.2}
+                              fill={isDropTarget ? (dropValid ? "#EEF8F3" : "#FBEDEC") : "var(--card)"}
+                              stroke={isDropTarget ? (dropValid ? "#43A883" : "#E0645A") : n.color}
+                              strokeWidth={selected || isDropTarget ? 2.2 : 1.2}
                             />
                             {/* Depth stripe: filled on the main line (I was there),
                                 hollow further out (logged about other people). */}
                             <rect x={n.x} y={n.y} width={4} height={NODE_H} rx={2} fill={n.color} opacity={n.depth === 0 ? 1 : 0.55} />
-                            <text x={n.x + NODE_PAD_X} y={n.y + 19} fontSize={11} fontWeight={600} className="select-none" fill="var(--foreground)">
+                            <text x={n.x + NODE_PAD_X} y={n.y + 19} fontSize={11} fontWeight={600} className="pointer-events-none select-none" fill="var(--foreground)">
                               {n.label}
                             </text>
-                            <text x={n.x + NODE_PAD_X} y={n.y + 34} fontSize={9} className="select-none font-mono" fill="var(--muted-foreground)">
+                            <text x={n.x + NODE_PAD_X} y={n.y + 34} fontSize={9} className="pointer-events-none select-none font-mono" fill="var(--muted-foreground)">
                               {n.meta}
                             </text>
+                            {/* Two ports for precise rewiring, on top of the
+                                card body's own coarser drag-to-relink: left
+                                carries this card's own parent link (also the
+                                only way to detach), right offers it as a
+                                parent to whatever you drop on. Neither is
+                                hidden behind hover — a control nobody can see
+                                isn't a control. */}
+                            <g
+                              transform={`translate(${n.x} ${n.cy})`}
+                              className="cursor-alias"
+                              onPointerDown={handlePortPointerDown({ event: n.event, x: n.x, cy: n.cy }, "left")}
+                            >
+                              <title>{t("cluster.portLeftTitle")}</title>
+                              <circle r={7} fill="var(--card)" stroke={n.color} strokeWidth={1.4} opacity={0.85} />
+                              <path d="M 2.5 -3.5 L -2.5 0 L 2.5 3.5" fill="none" stroke={n.color} strokeWidth={1.4} opacity={0.85} />
+                            </g>
+                            <g
+                              transform={`translate(${n.x + NODE_W} ${n.cy})`}
+                              className="cursor-copy"
+                              onPointerDown={handlePortPointerDown({ event: n.event, x: n.x, cy: n.cy }, "right")}
+                            >
+                              <title>{t("cluster.portRightTitle")}</title>
+                              <circle r={7} fill="var(--card)" stroke={n.color} strokeWidth={1.4} opacity={0.85} />
+                              <path d="M -2.5 -3.5 L 2.5 0 L -2.5 3.5" fill="none" stroke={n.color} strokeWidth={1.4} opacity={0.85} />
+                            </g>
                           </g>
                         );
                       })}
+
+                      {/* Live drag ghost — solid + green/red once hovering a
+                          valid/invalid target, muted dashed otherwise. */}
+                      {portDragVisual && (
+                        <path
+                          d={ghostCurve(portDragVisual.originX, portDragVisual.originY, portDragVisual.ghostX, portDragVisual.ghostY)}
+                          fill="none"
+                          stroke={portDragVisual.overNodeId ? (portDragVisual.valid ? "#43A883" : "#E0645A") : "var(--muted-foreground)"}
+                          strokeWidth={2}
+                          strokeDasharray={portDragVisual.overNodeId && portDragVisual.valid ? undefined : "5 4"}
+                        />
+                      )}
+                      {bodyDragVisual?.overNodeId && (
+                        <path
+                          d={ghostCurve(bodyDragVisual.originCx, bodyDragVisual.originCy, bodyDragVisual.ghostX, bodyDragVisual.ghostY)}
+                          fill="none"
+                          stroke={bodyDragVisual.valid ? "#43A883" : "#E0645A"}
+                          strokeWidth={2}
+                          strokeDasharray={bodyDragVisual.valid ? undefined : "5 4"}
+                        />
+                      )}
 
                       {layout.futureMarkers.map(({ event, anchorX, x, y, color }) => (
                         <g key={`fu-${event.id}`} style={{ cursor: "pointer" }} onClick={() => selectEvent(event.id)}>
@@ -807,6 +1270,45 @@ export function ClusterWorkflowDiagram({
                         <Crosshair className="size-3.5" />
                       </button>
                     </div>
+
+                    {/* Opens right where the drag-handle was dropped, so the new
+                        branch's text starts life exactly where it was placed. */}
+                    {branchPopover && (
+                      <div
+                        className="absolute z-20 w-56 rounded-lg border border-border bg-card p-2.5 shadow-lg"
+                        style={{
+                          left: Math.min(Math.max(4, branchPopover.x * view.k + view.x - 110), Math.max(4, viewportSize.width - 232)),
+                          top: Math.min(Math.max(4, branchPopover.y * view.k + view.y + 12), Math.max(4, viewportSize.height - 132)),
+                        }}
+                        onPointerDown={(e) => e.stopPropagation()}
+                      >
+                        <Textarea
+                          autoFocus
+                          value={branchPopoverText}
+                          onChange={(e) => setBranchPopoverText(e.target.value)}
+                          placeholder={t("cluster.expand.branchPlaceholder")}
+                          className="min-h-14 resize-none border-border bg-muted text-base md:text-xs"
+                        />
+                        <div className="mt-1.5 flex justify-end gap-1.5">
+                          <Button size="sm" variant="outline" onClick={() => setBranchPopover(null)} className="h-6.5 text-[11px]">
+                            {t("cluster.expand.cancel")}
+                          </Button>
+                          <Button
+                            size="sm"
+                            disabled={isPending || !branchPopoverText.trim()}
+                            onClick={() => {
+                              const sourceEvent = data?.events.find((ev) => ev.id === branchPopover.sourceId);
+                              if (!sourceEvent) return;
+                              createBranch(sourceEvent, branchPopoverText, () => setBranchPopover(null));
+                            }}
+                            className="h-6.5 text-[11px]"
+                          >
+                            {isPending && <Loader2 className="size-3 animate-spin" />}
+                            {t("cluster.expand.save")}
+                          </Button>
+                        </div>
+                      </div>
+                    )}
                 </div>
 
                 {/* Inline expansion — click any dot to describe it further, edit it, or grow a branch from it. */}

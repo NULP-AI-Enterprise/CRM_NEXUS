@@ -396,15 +396,20 @@ export function registerReadTools(server: McpServer, context: McpAuthContext) {
 
       const upcoming = getUpcomingFollowUps(events)
         .slice(0, limit ?? 20)
-        .map((e) => ({
-          id: e.id,
-          type: e.type,
-          rawText: redact ? "[redacted]" : e.rawText,
-          followUp: e.followUp,
-          followUpDate: e.followUpDate,
-          createdAt: e.createdAt,
-          entityLabel: entityLabel(e.entity),
-        }));
+        .map((e) =>
+          sanitizeRawText(
+            {
+              id: e.id,
+              type: e.type,
+              rawText: e.rawText,
+              followUp: e.followUp,
+              followUpDate: e.followUpDate,
+              createdAt: e.createdAt,
+              entityLabel: entityLabel(e.entity),
+            },
+            redact,
+          ),
+        );
 
       return jsonResult({ followUps: upcoming });
     },

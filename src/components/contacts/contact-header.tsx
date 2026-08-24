@@ -3,11 +3,9 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Building2, Star, Trash2, Pencil, MapPin, Phone, Link2, Send, Camera, MessageCircle, Share2 } from "lucide-react";
+import { Trash2, MapPin, Phone, Link2, Send, Camera, MessageCircle } from "lucide-react";
 import { toast } from "sonner";
 
-import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { CATEGORY_COLORS, initials, linkedinUrl, telegramUrl, instagramUrl, whatsappUrl } from "@/lib/contact-display";
 import { useTranslation } from "@/lib/i18n/context";
 import type { CompanyModel, ContactModel } from "@/generated/prisma/models";
@@ -46,155 +44,112 @@ export function ContactHeader({
     }
   };
 
+  const location = [contact.city, contact.country].filter(Boolean).join(", ");
+
+  // Social links become chips in the identity band, matching the template's
+  // pill row. Each keeps its original destination and semantics.
+  const socialChips = [
+    contact.phone && { key: "phone", href: `tel:${contact.phone}`, icon: Phone, label: contact.phone, ext: false },
+    contact.linkedin && { key: "linkedin", href: linkedinUrl(contact.linkedin), icon: Link2, label: "LinkedIn", ext: true },
+    contact.telegram && { key: "telegram", href: telegramUrl(contact.telegram), icon: Send, label: "Telegram", ext: true },
+    contact.instagram && { key: "instagram", href: instagramUrl(contact.instagram), icon: Camera, label: "Instagram", ext: true },
+    contact.whatsapp && { key: "whatsapp", href: whatsappUrl(contact.whatsapp), icon: MessageCircle, label: "WhatsApp", ext: true },
+  ].filter(Boolean) as Array<{ key: string; href: string; icon: typeof Phone; label: string; ext: boolean }>;
+
+  const chipClass =
+    "flex items-center gap-1 rounded-[20px] border border-[rgba(27,29,33,0.07)] bg-white px-[9px] py-[4px] text-[11px] text-[#3a3c42] transition-colors hover:border-[rgba(27,29,33,0.16)]";
+
   return (
-    <div className="relative border-b border-border p-5" style={{ backgroundColor: colors.bg }}>
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <div className="flex items-center gap-3.5">
-          <Avatar className="size-14 border border-border bg-secondary shrink-0">
-            <AvatarFallback className="text-sm font-medium bg-secondary text-secondary-foreground">
-              {initials(contact.fullName)}
-            </AvatarFallback>
-          </Avatar>
-
-          <div>
-            <div className="flex flex-wrap items-center gap-2">
-              <h1 className="font-heading text-xl font-semibold text-foreground tracking-tight">{contact.fullName}</h1>
-              <span className="inline-flex items-center gap-1.5 rounded-md border border-border bg-muted px-2 py-0.5 text-xs text-muted-foreground">
-                <span
-                  className="size-1.5 rounded-full"
-                  style={{ backgroundColor: colors.dot }}
-                />
-                {t(`category.${contact.category}`)}
-              </span>
-            </div>
-
-            <div className="mt-1 flex flex-wrap items-center gap-2.5 text-xs text-muted-foreground">
-              {contact.role && <span>{contact.role}</span>}
-              {contact.company && (
-                <>
-                  <span className="text-muted-foreground/60">•</span>
-                  <Link
-                    href="/dashboard"
-                    className="flex items-center gap-1 text-muted-foreground hover:text-foreground transition-colors"
-                  >
-                    <Building2 className="size-3 text-muted-foreground" />
-                    {contact.company.name}
-                  </Link>
-                </>
-              )}
-              {(contact.city || contact.country) && (
-                <>
-                  <span className="text-muted-foreground/60">•</span>
-                  <span className="flex items-center gap-1">
-                    <MapPin className="size-3 text-muted-foreground" />
-                    {[contact.city, contact.country].filter(Boolean).join(", ")}
-                  </span>
-                </>
-              )}
-            </div>
-
-            {(contact.phone || contact.linkedin || contact.telegram || contact.instagram || contact.whatsapp) && (
-              <div className="mt-2 flex flex-wrap items-center gap-1.5">
-                {contact.phone && (
-                  <a
-                    href={`tel:${contact.phone}`}
-                    title={t("contact.form.phone")}
-                    className="flex items-center gap-1 rounded-md border border-border bg-muted px-2 py-1 text-xs text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
-                  >
-                    <Phone className="size-3" />
-                    {contact.phone}
-                  </a>
-                )}
-                {contact.linkedin && (
-                  <a
-                    href={linkedinUrl(contact.linkedin)}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    title={t("contact.form.linkedin")}
-                    className="flex items-center gap-1 rounded-md border border-border bg-muted px-2 py-1 text-xs text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
-                  >
-                    <Link2 className="size-3" />
-                    LinkedIn
-                  </a>
-                )}
-                {contact.telegram && (
-                  <a
-                    href={telegramUrl(contact.telegram)}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    title="Telegram"
-                    className="flex items-center gap-1 rounded-md border border-border bg-muted px-2 py-1 text-xs text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
-                  >
-                    <Send className="size-3" />
-                    Telegram
-                  </a>
-                )}
-                {contact.instagram && (
-                  <a
-                    href={instagramUrl(contact.instagram)}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    title="Instagram"
-                    className="flex items-center gap-1 rounded-md border border-border bg-muted px-2 py-1 text-xs text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
-                  >
-                    <Camera className="size-3" />
-                    Instagram
-                  </a>
-                )}
-                {contact.whatsapp && (
-                  <a
-                    href={whatsappUrl(contact.whatsapp)}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    title="WhatsApp"
-                    className="flex items-center gap-1 rounded-md border border-border bg-muted px-2 py-1 text-xs text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
-                  >
-                    <MessageCircle className="size-3" />
-                    WhatsApp
-                  </a>
-                )}
-              </div>
-            )}
-          </div>
+    <div
+      className="relative flex flex-wrap items-start gap-x-4 gap-y-3 border-b border-[#f1f0ec] px-[22px] py-5"
+      style={{ backgroundColor: colors.bg }}
+    >
+      {/* Avatar + identity in one flex unit so the action row wraps as a whole */}
+      <div className="flex min-w-0 flex-1 basis-[200px] items-start gap-4">
+        {/* Identity glyph — white tile inked with the category colour */}
+        <div
+          className="flex size-[52px] flex-none items-center justify-center rounded-full bg-white text-[16px] font-semibold"
+          style={{ color: colors.text }}
+        >
+          {initials(contact.fullName)}
         </div>
 
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-x-[9px] gap-y-1">
+            <span
+              className="kicker flex items-center gap-1.5 rounded-[5px] bg-white px-2 py-[3px]"
+              style={{ fontSize: "9.5px", color: colors.text }}
+            >
+              <span className="size-1.5 rounded-full" style={{ backgroundColor: colors.dot }} />
+              {t(`category.${contact.category}`)}
+            </span>
+            {(contact.role || contact.company) && (
+              <span className="text-[11.5px] text-[#6e7480]">
+                {contact.role}
+                {contact.role && contact.company && " · "}
+                {contact.company?.name}
+              </span>
+            )}
+          </div>
+
+          <h1 className="mt-[7px] font-heading text-[25px] font-semibold tracking-[-0.6px] text-foreground">
+            {contact.fullName}
+          </h1>
+
+          <div className="mt-2.5 flex flex-wrap items-center gap-[7px]">
+            {location && (
+              <span className={chipClass}>
+                <MapPin className="size-3 text-[#8c8c86]" />
+                {location}
+              </span>
+            )}
+            {contact.usefulnessScore != null && (
+              <span className={chipClass}>
+                <span className="font-mono text-[10.5px]">{contact.usefulnessScore}/10</span>
+                <span className="text-[#8c8c86]">{t("contact.valueScore")}</span>
+              </span>
+            )}
+            {socialChips.map((s) => {
+              const Icon = s.icon;
+              return (
+                <a
+                  key={s.key}
+                  href={s.href}
+                  {...(s.ext ? { target: "_blank", rel: "noopener noreferrer" } : {})}
+                  className={chipClass}
+                >
+                  <Icon className="size-3 text-[#8c8c86]" />
+                  {s.label}
+                </a>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+
+      {/* Action buttons — on mobile they wrap below identity (basis-full) and
+          become a horizontal row; on sm+ they stack vertically on the right */}
+      <div className="flex w-full items-center gap-2 sm:w-auto sm:flex-col sm:items-end">
+        <Link
+          href={`/network?focus=${contact.id}`}
+          className="whitespace-nowrap rounded-[9px] bg-[#1b1d21] px-[13px] py-2 text-[12px] font-semibold text-white transition-colors hover:bg-[#33363d]"
+        >
+          {t("contact.viewInGraph")} →
+        </Link>
         <div className="flex items-center gap-2">
-          {contact.usefulnessScore != null && (
-            <div className="flex items-center gap-2 rounded-lg bg-card border border-border px-3 py-1.5 text-foreground">
-              <Star className="size-4 text-accent" />
-              <div>
-                <div className="text-[10px] uppercase text-muted-foreground font-medium">{t("contact.valueScore")}</div>
-                <div className="text-sm font-semibold font-mono text-foreground leading-tight">
-                  {contact.usefulnessScore} / 10
-                </div>
-              </div>
-            </div>
-          )}
-          <Link
-            href={`/network?focus=${contact.id}`}
-            className="flex h-8 items-center gap-1.5 rounded-md bg-primary px-3 text-xs font-semibold text-primary-foreground hover:bg-primary/90 transition-colors"
-          >
-            <Share2 className="size-3.5" />
-            {t("contact.viewInGraph")}
-          </Link>
-          <Button
-            size="icon"
-            variant="outline"
+          <button
             onClick={() => setIsEditOpen(true)}
-            className="size-8 border-border bg-card text-muted-foreground hover:text-foreground"
-            title={t("common.edit")}
+            className="rounded-[9px] border border-[#e4e3de] bg-white px-[13px] py-2 text-[12px] font-semibold text-foreground transition-colors hover:border-[#c9c8c2]"
           >
-            <Pencil className="size-3.5" />
-          </Button>
-          <Button
-            size="icon"
-            variant="outline"
+            {t("common.edit")}
+          </button>
+          <button
             onClick={() => setIsDeleteOpen(true)}
-            className="size-8 border-border bg-card text-muted-foreground hover:text-destructive"
             title={t("common.delete")}
+            className="flex size-[34px] items-center justify-center rounded-[9px] border border-[#e4e3de] bg-white text-[#9a9a94] transition-colors hover:text-destructive"
           >
             <Trash2 className="size-3.5" />
-          </Button>
+          </button>
         </div>
       </div>
 

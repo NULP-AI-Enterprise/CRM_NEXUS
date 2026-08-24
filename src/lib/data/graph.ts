@@ -91,28 +91,16 @@ interface SimLink {
   target: string;
 }
 
-/** Runs a force layout to full convergence synchronously (a fixed tick count,
- * not the timer/rAF-driven `.on("tick", ...)` API) and returns final
- * positions — this is the ONE place layout is computed. The client never
- * simulates; it only ever projects these positions into its viewport, which
- * is what makes resizing cheap and keeps mobile from paying for a continuous
- * physics loop. Degree-scaled charge/link-distance/collision keeps
- * high-connection hub nodes from being crowded by their many neighbors. */
-function computeLayout(
-  nodes: GraphNode[],
-  links: GraphLink[],
-  degreeMap: Map<string, number>,
-): Map<string, { x: number; y: number }> {
-  const simNodes: SimNode[] = nodes.map((n) => ({
-    id: n.id,
-    radius: n.nodeType === "company" || n.nodeType === "community" ? 18 : 14,
-  }));
-  // Fresh copies — forceLink() mutates .source/.target from ids into node
-  // object references, which would corrupt the real GraphLink[] we return.
-  const simLinks: SimLink[] = links.map((l) => ({ source: l.source, target: l.target }));
-
-  const degreeOf = (id: string) => degreeMap.get(id) ?? 0;
-
+/** One component's nodes, laid out on their own local origin. Isolated nodes
+ * and small clusters otherwise drift wherever residual repulsion from the
+ * *entire* graph happens to leave them once a single global simulation stops
+ * — this is the actual source of the "everything piled into one chaotic
+ * blob, with a couple of nodes stranded at random" complaint, not a
+ * rendering issue. Running each component through the same force stack
+ * independently, then packing the converged boxes, is what gives every
+ * disconnected piece (which the UI already surfaces as "C1/C2/C3" filter
+ * chips) its own clean region by default. */
+function layoutComponent(simNodes: SimNode[], simLinks: SimLink[], degreeOf: (id: string) => number) {
   const simulation = forceSimulation(simNodes)
     .force(
       "charge",
@@ -136,8 +124,116 @@ function computeLayout(
     .stop();
 
   for (let i = 0; i < 300; i++) simulation.tick();
+}
 
-  return new Map(simNodes.map((n) => [n.id, { x: n.x ?? 0, y: n.y ?? 0 }]));
+/** Connected components over the same nodes/links the client independently
+ * re-derives for its "disconnected clusters" chips (`network-graph.tsx`) —
+ * ported here so the server can lay each one out on its own local origin
+ * before packing them into shared coordinates. */
+function connectedComponents(nodeIds: string[], links: SimLink[]): string[][] {
+  const adjacency = new Map<string, string[]>();
+  for (const id of nodeIds) adjacency.set(id, []);
+  for (const l of links) {
+    adjacency.get(l.source)?.push(l.target);
+    adjacency.get(l.target)?.push(l.source);
+  }
+
+  const seen = new Set<string>();
+  const groups: string[][] = [];
+  for (const id of nodeIds) {
+    if (seen.has(id)) continue;
+    const group: string[] = [];
+    const queue = [id];
+    seen.add(id);
+    while (queue.length > 0) {
+      const current = queue.shift()!;
+      group.push(current);
+      for (const neighbor of adjacency.get(current) ?? []) {
+        if (!seen.has(neighbor)) {
+          seen.add(neighbor);
+          queue.push(neighbor);
+        }
+      }
+    }
+    groups.push(group);
+  }
+  return groups;
+}
+
+/** Runs a force layout to full convergence synchronously (a fixed tick count,
+ * not the timer/rAF-driven `.on("tick", ...)` API) and returns final
+ * positions — this is the ONE place layout is computed. The client never
+ * simulates; it only ever projects these positions into its viewport, which
+ * is what makes resizing cheap and keeps mobile from paying for a continuous
+ * physics loop. Each connected component is simulated on its own local
+ * origin, then the converged boxes are shelf-packed into one shared space —
+ * see `layoutComponent` for why. */
+function computeLayout(
+  nodes: GraphNode[],
+  links: GraphLink[],
+  degreeMap: Map<string, number>,
+): Map<string, { x: number; y: number }> {
+  const radiusOf = (n: GraphNode) => (n.nodeType === "company" || n.nodeType === "community" ? 18 : 14);
+  const degreeOf = (id: string) => degreeMap.get(id) ?? 0;
+  // Fresh copies — forceLink() mutates .source/.target from ids into node
+  // object references, which would corrupt the real GraphLink[] we return.
+  const allSimLinks: SimLink[] = links.map((l) => ({ source: l.source, target: l.target }));
+  const nodeIds = nodes.map((n) => n.id);
+
+  const groups = connectedComponents(nodeIds, allSimLinks).sort((a, b) => b.length - a.length);
+
+  const GAP = 140;
+  const SHELF_BUDGET = Math.max(700, Math.sqrt(nodes.length) * 260);
+  let shelfX = 0;
+  let shelfY = 0;
+  let shelfHeight = 0;
+  const positions = new Map<string, { x: number; y: number }>();
+
+  for (const group of groups) {
+    const idSet = new Set(group);
+    const simNodes: SimNode[] = group.map((id) => {
+      const node = nodes.find((n) => n.id === id)!;
+      return { id, radius: radiusOf(node) };
+    });
+    const simLinks = allSimLinks.filter((l) => idSet.has(l.source) && idSet.has(l.target));
+
+    if (simNodes.length === 1) {
+      simNodes[0]!.x = 0;
+      simNodes[0]!.y = 0;
+    } else {
+      layoutComponent(simNodes, simLinks, degreeOf);
+    }
+
+    let minX = Infinity;
+    let maxX = -Infinity;
+    let minY = Infinity;
+    let maxY = -Infinity;
+    for (const n of simNodes) {
+      minX = Math.min(minX, n.x ?? 0);
+      maxX = Math.max(maxX, n.x ?? 0);
+      minY = Math.min(minY, n.y ?? 0);
+      maxY = Math.max(maxY, n.y ?? 0);
+    }
+    const width = maxX - minX;
+    const height = maxY - minY;
+
+    if (shelfX > 0 && shelfX + width > SHELF_BUDGET) {
+      shelfX = 0;
+      shelfY += shelfHeight + GAP;
+      shelfHeight = 0;
+    }
+
+    const offsetX = shelfX - minX;
+    const offsetY = shelfY - minY;
+    for (const n of simNodes) {
+      positions.set(n.id, { x: (n.x ?? 0) + offsetX, y: (n.y ?? 0) + offsetY });
+    }
+
+    shelfX += width + GAP;
+    shelfHeight = Math.max(shelfHeight, height);
+  }
+
+  return positions;
 }
 
 export async function getGraphData(userId: string): Promise<FullGraphData> {

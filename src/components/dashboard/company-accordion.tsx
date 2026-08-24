@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Building2, Users } from "lucide-react";
+import { Building2, Maximize2, Users } from "lucide-react";
 import { toast } from "sonner";
 
 import {
@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/accordion";
 import { ContactCard } from "@/components/dashboard/contact-card";
 import { CompanyFormDialog } from "@/components/dashboard/company-form-dialog";
+import { CompanyDetailPanel } from "@/components/dashboard/company-detail-panel";
 import { ConfirmDeleteDialog } from "@/components/confirm-delete-dialog";
 import { EntityCardActions } from "@/components/dashboard/entity-card";
 import { useTranslation } from "@/lib/i18n/context";
@@ -21,7 +22,9 @@ import type { CompanyModel, ContactModel } from "@/generated/prisma/models";
 type CompanyWithContacts = CompanyModel & { contacts: ContactModel[] };
 
 const UNASSIGNED_VALUE = "__unassigned";
-const ROW_COLUMNS = "minmax(0, 1fr) 160px 90px 64px";
+// On md+ show all four columns; below that collapse to just name + count
+const ROW_COLUMNS_MD = "minmax(0, 1fr) 160px 80px 56px";
+const ROW_COLUMNS_SM = "minmax(0, 1fr) 60px";
 
 export function CompanyAccordion({
   companies,
@@ -34,6 +37,7 @@ export function CompanyAccordion({
   const router = useRouter();
   const [editingCompany, setEditingCompany] = useState<CompanyModel | null>(null);
   const [deletingCompany, setDeletingCompany] = useState<CompanyModel | null>(null);
+  const [detailCompanyId, setDetailCompanyId] = useState<string | null>(null);
 
   if (companies.length === 0 && unassignedContacts.length === 0) {
     return (
@@ -52,22 +56,31 @@ export function CompanyAccordion({
   return (
     <>
       <Accordion defaultValue={defaultValue} className="rounded-[16px] border border-border bg-card overflow-hidden">
+        {/* Column headers — full set on md+, minimal on smaller screens */}
         <div
-          className="grid gap-3 border-b border-border bg-muted/40 px-[18px] py-[11px] font-mono text-[9.5px] uppercase tracking-[0.08em] text-muted-foreground"
-          style={{ gridTemplateColumns: ROW_COLUMNS }}
+          className="hidden border-b border-border bg-muted/40 px-[18px] py-[11px] font-mono text-[9.5px] uppercase tracking-[0.08em] text-muted-foreground md:grid md:gap-3"
+          style={{ gridTemplateColumns: ROW_COLUMNS_MD }}
         >
           <div>{t("company.table.company")}</div>
           <div>{t("company.table.industry")}</div>
           <div>{t("company.table.contacts")}</div>
           <div />
         </div>
+        <div
+          className="grid gap-3 border-b border-border bg-muted/40 px-[18px] py-[11px] font-mono text-[9.5px] uppercase tracking-[0.08em] text-muted-foreground md:hidden"
+          style={{ gridTemplateColumns: ROW_COLUMNS_SM }}
+        >
+          <div>{t("company.table.company")}</div>
+          <div>{t("company.table.contacts")}</div>
+        </div>
 
         {companies.map((company) => (
           <AccordionItem key={company.id} value={company.id} className="group relative not-last:border-b border-border">
-            <AccordionTrigger className="px-[18px] py-[13px] pr-16 hover:no-underline hover:bg-muted/40 rounded-none">
+            <AccordionTrigger className="px-[18px] py-[13px] pr-32 hover:no-underline hover:bg-muted/40 rounded-none">
+              {/* Full row on md+ */}
               <div
-                className="grid w-full items-center gap-3"
-                style={{ gridTemplateColumns: ROW_COLUMNS }}
+                className="hidden w-full items-center gap-3 md:grid"
+                style={{ gridTemplateColumns: ROW_COLUMNS_MD }}
               >
                 <div className="flex items-center gap-[9px] min-w-0">
                   <Building2 className="size-3.5 shrink-0" style={{ color: "#43A883" }} />
@@ -77,12 +90,35 @@ export function CompanyAccordion({
                 <div className="text-[12px] text-muted-foreground">{company.contacts.length}</div>
                 <div />
               </div>
+              {/* Compact row on small screens */}
+              <div
+                className="grid w-full items-center gap-3 md:hidden"
+                style={{ gridTemplateColumns: ROW_COLUMNS_SM }}
+              >
+                <div className="flex items-center gap-[9px] min-w-0">
+                  <Building2 className="size-3.5 shrink-0" style={{ color: "#43A883" }} />
+                  <span className="truncate text-[13px] font-semibold text-foreground">{company.name}</span>
+                </div>
+                <div className="text-[12px] text-muted-foreground">{company.contacts.length}</div>
+              </div>
             </AccordionTrigger>
-            <EntityCardActions
-              onEdit={() => setEditingCompany(company)}
-              onDelete={() => setDeletingCompany(company)}
-              className="absolute right-[18px] top-1/2 -translate-y-1/2"
-            />
+            <div className="absolute right-[18px] top-1/2 flex -translate-y-1/2 items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setDetailCompanyId(company.id);
+                }}
+                title={t("company.detail.viewDetails")}
+                className="flex items-center gap-1 rounded-md px-2 py-1 text-[11px] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+              >
+                <Maximize2 className="size-3" />
+              </button>
+              <EntityCardActions
+                onEdit={() => setEditingCompany(company)}
+                onDelete={() => setDeletingCompany(company)}
+                className="opacity-100"
+              />
+            </div>
             <AccordionContent className="px-[18px] pb-4 pt-0">
               <div className="grid gap-3" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(230px, 1fr))" }}>
                 {company.contacts.map((contact) => (
@@ -136,6 +172,8 @@ export function CompanyAccordion({
           }}
         />
       )}
+
+      <CompanyDetailPanel companyId={detailCompanyId} onOpenChange={(open) => !open && setDetailCompanyId(null)} />
     </>
   );
 }

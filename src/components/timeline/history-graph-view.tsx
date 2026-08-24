@@ -20,9 +20,27 @@ const DAY_MS = 86400000;
 type Scale = "day" | "week" | "month" | "year";
 const SPANS: Record<Scale, number> = { day: 14, week: 70, month: 210, year: 460 };
 const SCALES: Scale[] = ["day", "week", "month", "year"];
-/** Approximate advance width of the 12px semibold caption face, used only to
- * decide how many characters fit before the canvas edge. */
+/** Per-character width estimates for the card's two text lines — used to size
+ * the card to its own content instead of floating a caption above a
+ * fixed-width shape. A floated caption was the actual cause of two cards
+ * overlapping without their bodies ever touching: the lane-packing math only
+ * ever compared body widths, and text drawn outside that box was invisible
+ * to it. Folding the text into the card's own measured width fixes this at
+ * the source rather than patching the collision check separately. */
 const TITLE_CHAR_W = 6.4;
+const META_CHAR_W = 5.4;
+const CARD_PAD_X = 10;
+const CARD_MIN_W = 132;
+const CARD_MAX_W = 208;
+
+function estimateTextWidth(text: string, perChar: number): number {
+  return text.length * perChar;
+}
+
+function truncateToWidth(text: string, maxWidth: number, perChar: number): string {
+  const maxChars = Math.max(3, Math.floor(maxWidth / perChar));
+  return text.length > maxChars ? `${text.slice(0, maxChars - 1)}…` : text;
+}
 
 interface Participant {
   id: string;
@@ -91,13 +109,10 @@ interface BlobShape {
   tint: string;
   color: string;
   sw: number;
-  lx: number;
-  ly: number;
-  ly2: number;
   title: string;
-  dateLabel: string;
+  metaLine: string;
+  isDirect: boolean;
   hasChildren: boolean;
-  nodes: Array<{ cx: number; cy: number; color: string }>;
   onSelect: () => void;
 }
 
@@ -282,8 +297,12 @@ export function HistoryGraphView({
     while (ix < sorted.length) {
       const ev = sorted[ix]!;
       const x = xOf(ev.date);
-      const n = ev.participants.length;
-      const w = Math.max(104, 52 + n * 26);
+      const metaLineFull = `${ev.entityLabelStr} · ${format(ev.date, "d MMM", { locale: dateLocale })}`;
+      const contentW = Math.max(
+        estimateTextWidth(ev.rawText, TITLE_CHAR_W),
+        estimateTextWidth(metaLineFull, META_CHAR_W),
+      );
+      const w = Math.min(CARD_MAX_W, Math.max(CARD_MIN_W, contentW + CARD_PAD_X * 2 + 14));
       const left = x - w / 2;
       let lane = -1;
       for (let l = 0; l < LANES; l++) {
@@ -322,7 +341,7 @@ export function HistoryGraphView({
           }
           droppedBlobs.add(prev.idx);
           const merged = prev.count + group.length;
-          const px = Math.min(prev.x, rightEdge - pw);
+          const px = Math.min(prev.x, Math.max(0, rightEdge - pw));
           const first = prev.first;
           packsOut.push({
             x: Math.round(px),
@@ -357,15 +376,7 @@ export function HistoryGraphView({
       }
       const y = laneY(lane);
       const sel = selectedEvent?.id === ev.id;
-      // A blob's caption sits above it and is wider than the blob itself, so
-      // it has to be fitted to the canvas independently: pin it inside the
-      // right edge, then trim the text to whatever room is actually left.
-      // Without this the caption just runs off the canvas — SVG text neither
-      // wraps nor clips — which is most visible exactly where events cluster,
-      // i.e. at "now", the part of the timeline people look at most.
-      const lx = Math.round(Math.min(Math.max(left + 4, 4), Math.max(4, W - 12)));
-      const maxChars = Math.max(8, Math.floor((W - 8 - lx) / TITLE_CHAR_W));
-      const titleLimit = Math.min(26, maxChars);
+      const textW = w - CARD_PAD_X * 2 - 14;
       blobsOut.push({
         id: ev.id,
         x: Math.round(left),
@@ -375,17 +386,10 @@ export function HistoryGraphView({
         tint: KIND_STYLE[ev.kind].tint,
         color: KIND_STYLE[ev.kind].color,
         sw: sel ? 2.4 : 1.3,
-        lx,
-        ly: y - 19,
-        ly2: y - 5,
-        title: ev.rawText.length > titleLimit ? `${ev.rawText.slice(0, titleLimit - 1)}…` : ev.rawText,
-        dateLabel: format(ev.date, "d MMM yy", { locale: dateLocale }),
+        title: truncateToWidth(ev.rawText, textW, TITLE_CHAR_W),
+        metaLine: truncateToWidth(metaLineFull, textW, META_CHAR_W),
+        isDirect: ev.participants.some((p) => p.isMe),
         hasChildren: parentIds.has(ev.id),
-        nodes: ev.participants.map((p, i) => ({
-          cx: left + (w / (n + 1)) * (i + 1),
-          cy: y + BLOB_H / 2 + (i % 2 ? 9 : -9),
-          color: p.color,
-        })),
         onSelect: () => pickEvent(ev.id),
       });
       laneRight[lane] = left + w;
@@ -473,7 +477,7 @@ export function HistoryGraphView({
 
   if (allEvents.length === 0) {
     return (
-      <div className="flex h-full flex-col items-center justify-center gap-2 text-center" style={{ background: "#F4F7FB" }}>
+      <div className="flex h-full flex-col items-center justify-center gap-2 text-center" style={{ background: "#F7F7F4" }}>
         <History className="size-6 text-muted-foreground" />
         <p className="text-sm text-muted-foreground">{t("historyGraph.noEvents")}</p>
       </div>
@@ -486,19 +490,19 @@ export function HistoryGraphView({
           scrolling independently, the page itself never scrolling and never
           scrolling sideways. Columns drop out by width rather than pushing the
           row past the viewport (see the regime comment on `mobilePane`). */}
-      <div className="flex h-full flex-col" style={{ background: "#F4F7FB" }}>
+      <div className="flex h-full flex-col" style={{ background: "#F7F7F4" }}>
         {/* Phone-only pane switcher. The three columns are a desktop layout;
             on a phone they become three destinations. */}
-        <div className="flex shrink-0 gap-1 border-b p-2 md:hidden" style={{ borderColor: "#DFE6F0", background: "#FBFCFE" }}>
+        <div className="flex shrink-0 gap-1 border-b p-2 md:hidden" style={{ borderColor: "#ECEBE7", background: "#FFFFFF" }}>
           {(["list", "chart", "detail"] as const).map((pane) => (
             <button
               key={pane}
               onClick={() => setMobilePane(pane)}
               aria-pressed={mobilePane === pane}
               className={`h-10 flex-1 rounded-lg text-[12.5px] font-semibold transition-colors ${
-                mobilePane === pane ? "text-white" : "text-[#5A6474]"
+                mobilePane === pane ? "text-white" : "text-[#3A3C42]"
               }`}
-              style={{ background: mobilePane === pane ? "#1B1D21" : "#fff", border: "1px solid #DDE5F0" }}
+              style={{ background: mobilePane === pane ? "#1B1D21" : "#fff", border: "1px solid #ECEBE7" }}
             >
               {pane === "list" ? t("historyGraph.paneList") : pane === "chart" ? t("historyGraph.paneChart") : t("historyGraph.paneDetail")}
             </button>
@@ -509,16 +513,16 @@ export function HistoryGraphView({
           {/* LEFT: events sidebar */}
           <div
             className={`${mobilePane === "list" ? "flex" : "hidden"} w-full flex-col gap-[13px] overflow-auto p-4 md:flex md:w-[240px] md:flex-none md:px-[14px] wide:w-[266px]`}
-            style={{ background: "#FBFCFE", borderRight: "1px solid #DFE6F0", maxHeight: "100%" }}
+            style={{ background: "#FFFFFF", borderRight: "1px solid #ECEBE7", maxHeight: "100%" }}
           >
           <div>
             <div style={{ fontSize: 13.5, fontWeight: 600 }}>{t("historyGraph.sidebarTitle")}</div>
-            <div style={{ fontSize: 11, color: "#7C8698", marginTop: 2 }}>
+            <div style={{ fontSize: 11, color: "#8C8C86", marginTop: 2 }}>
               {sidebarList.length} {t("historyGraph.eventsInView")}
             </div>
           </div>
-          <div className="flex items-center gap-2 rounded-[9px] border px-[10px] py-[7px]" style={{ background: "#fff", borderColor: "#DDE5F0" }}>
-            <Search className="size-[13px] shrink-0" style={{ color: "#9AA4B4" }} />
+          <div className="flex items-center gap-2 rounded-[9px] border px-[10px] py-[7px]" style={{ background: "#fff", borderColor: "#ECEBE7" }}>
+            <Search className="size-[13px] shrink-0" style={{ color: "#9A9A94" }} />
             {/* 16px on phones: iOS Safari force-zooms the page when a focused
                 field is smaller, which here means zooming into a canvas the
                 user then has to fight back out of. */}
@@ -546,14 +550,14 @@ export function HistoryGraphView({
                   onClick={() => pickEvent(ev.id)}
                   onKeyDown={(e) => e.key === "Enter" && pickEvent(ev.id)}
                   onMouseDown={(e) => e.preventDefault()}
-                  className="relative cursor-pointer rounded-[11px] border px-[10px] py-[9px] hover:border-[#C9D4E4]"
-                  style={{ borderColor: "#E2E8F2", background: "#fff", borderLeft: `3px solid ${KIND_STYLE[ev.kind].color}` }}
+                  className="relative cursor-pointer rounded-[11px] border px-[10px] py-[9px] hover:border-[#E4E3DE]"
+                  style={{ borderColor: "#F1F0EC", background: "#fff", borderLeft: `3px solid ${KIND_STYLE[ev.kind].color}` }}
                 >
-                  {active && <div className="pointer-events-none absolute inset-0 rounded-[11px]" style={{ border: "1.5px solid #4E7FD4" }} />}
+                  {active && <div className="pointer-events-none absolute inset-0 rounded-[11px]" style={{ border: "1.5px solid #5B8DEF" }} />}
                   <div className="relative" style={{ fontSize: 12, fontWeight: 600, lineHeight: 1.3 }}>
                     {ev.rawText.length > 26 ? `${ev.rawText.slice(0, 25)}…` : ev.rawText}
                   </div>
-                  <div className="relative flex items-center gap-[6px]" style={{ marginTop: 5, fontFamily: "var(--font-mono)", fontSize: 9.5, color: "#8C97A8" }}>
+                  <div className="relative flex items-center gap-[6px]" style={{ marginTop: 5, fontFamily: "var(--font-mono)", fontSize: 9.5, color: "#8C8C86" }}>
                     <span>{format(ev.date, "d MMM yy", { locale: dateLocale })}</span>
                     <span>·</span>
                     <span>
@@ -569,12 +573,12 @@ export function HistoryGraphView({
               );
             })}
           </div>
-          <div className="mt-auto flex flex-col gap-[6px] border-t pt-3" style={{ borderColor: "#E4EAF3" }}>
-            <div style={{ fontFamily: "var(--font-mono)", fontSize: 8.5, letterSpacing: "0.09em", textTransform: "uppercase", color: "#93A0B2", marginBottom: 2 }}>
+          <div className="mt-auto flex flex-col gap-[6px] border-t pt-3" style={{ borderColor: "#F1F0EC" }}>
+            <div style={{ fontFamily: "var(--font-mono)", fontSize: 8.5, letterSpacing: "0.09em", textTransform: "uppercase", color: "#9A9A94", marginBottom: 2 }}>
               {t("historyGraph.legendTitle")}
             </div>
             {(["MEETING", "CALL", "INTRO", "EMAIL", "WORKSHOP", "MEMO"] as InteractionType[]).map((kind) => (
-              <div key={kind} className="flex items-center gap-[7px]" style={{ fontSize: 11, color: "#5A6474" }}>
+              <div key={kind} className="flex items-center gap-[7px]" style={{ fontSize: 11, color: "#3A3C42" }}>
                 <div className="size-3 rounded shrink-0" style={{ border: `1.5px solid ${KIND_STYLE[kind].color}`, background: KIND_STYLE[kind].tint }} />
                 {t(`interactionType.${kind}`)}
               </div>
@@ -584,7 +588,7 @@ export function HistoryGraphView({
 
         {/* MAIN: header + canvas + scrubber */}
           <div className={`${mobilePane === "chart" ? "flex" : "hidden"} min-h-0 w-full min-w-0 flex-1 flex-col md:flex`}>
-            <div className="flex flex-wrap items-center gap-3 px-4 py-3 md:gap-[14px] md:px-[22px] md:py-4" style={{ borderBottom: "1px solid #DFE6F0", background: "rgba(255,255,255,.72)" }}>
+            <div className="flex flex-wrap items-center gap-3 px-4 py-3 md:gap-[14px] md:px-[22px] md:py-4" style={{ borderBottom: "1px solid #ECEBE7", background: "rgba(255,255,255,.72)" }}>
               <div className="hidden md:block">
                 <div className="flex items-center gap-2">
                   <h1 style={{ margin: 0, fontSize: 17, fontWeight: 600, letterSpacing: "-0.3px" }}>{t("dashboard.tab.timeline")}</h1>
@@ -596,16 +600,16 @@ export function HistoryGraphView({
                       textTransform: "uppercase",
                       padding: "3px 7px",
                       borderRadius: 5,
-                      background: "#E4EDF9",
-                      color: "#3F6299",
+                      background: "#EAF1FE",
+                      color: "#5B8DEF",
                     }}
                   >
                     {t("historyGraph.badge")}
                   </span>
                 </div>
-                <div style={{ fontSize: 11.5, color: "#7C8698", marginTop: 3 }}>{t("historyGraph.subtitle")}</div>
+                <div style={{ fontSize: 11.5, color: "#8C8C86", marginTop: 3 }}>{t("historyGraph.subtitle")}</div>
               </div>
-              <div className="flex flex-1 gap-[5px] rounded-[10px] border p-1 md:ml-auto md:flex-none" style={{ background: "#fff", borderColor: "#DDE5F0" }}>
+              <div className="flex flex-1 gap-[5px] rounded-[10px] border p-1 md:ml-auto md:flex-none" style={{ background: "#fff", borderColor: "#ECEBE7" }}>
                 {SCALES.map((s) => (
                   <button
                     key={s}
@@ -619,7 +623,7 @@ export function HistoryGraphView({
                       fontSize: 11.5,
                       fontWeight: 600,
                       cursor: "pointer",
-                      color: scale === s ? "#fff" : "#5A6474",
+                      color: scale === s ? "#fff" : "#3A3C42",
                       background: scale === s ? "#1B1D21" : "transparent",
                       border: "none",
                     }}
@@ -628,12 +632,12 @@ export function HistoryGraphView({
                   </button>
                 ))}
               </div>
-              <div className="flex gap-1 rounded-[10px] border p-1" style={{ background: "#fff", borderColor: "#DDE5F0" }}>
+              <div className="flex gap-1 rounded-[10px] border p-1" style={{ background: "#fff", borderColor: "#ECEBE7" }}>
                 <button
                   onClick={() => setTOffset((o) => o + 1)}
                   aria-label={t("historyGraph.panBack")}
-                  className="flex size-9 items-center justify-center rounded-[7px] hover:bg-[#F1F5FA] md:size-[26px]"
-                  style={{ fontSize: 14, cursor: "pointer", color: "#5A6474", border: "none", background: "transparent" }}
+                  className="flex size-9 items-center justify-center rounded-[7px] hover:bg-[#F6F6F4] md:size-[26px]"
+                  style={{ fontSize: 14, cursor: "pointer", color: "#3A3C42", border: "none", background: "transparent" }}
                 >
                   ←
                 </button>
@@ -642,8 +646,8 @@ export function HistoryGraphView({
                   aria-label={t("historyGraph.jumpToNow")}
                   title={t("historyGraph.jumpToNow")}
                   disabled={tOffset === 0}
-                  className="flex h-9 items-center justify-center rounded-[7px] px-2.5 text-[11.5px] font-semibold hover:bg-[#F1F5FA] disabled:opacity-35 md:h-[26px]"
-                  style={{ cursor: "pointer", color: "#5A6474", border: "none", background: "transparent" }}
+                  className="flex h-9 items-center justify-center rounded-[7px] px-2.5 text-[11.5px] font-semibold hover:bg-[#F6F6F4] disabled:opacity-35 md:h-[26px]"
+                  style={{ cursor: "pointer", color: "#3A3C42", border: "none", background: "transparent" }}
                 >
                   {t("historyGraph.now")}
                 </button>
@@ -651,8 +655,8 @@ export function HistoryGraphView({
                   onClick={() => setTOffset((o) => Math.max(0, o - 1))}
                   aria-label={t("historyGraph.panFwd")}
                   disabled={tOffset === 0}
-                  className="flex size-9 items-center justify-center rounded-[7px] hover:bg-[#F1F5FA] disabled:opacity-35 md:size-[26px]"
-                  style={{ fontSize: 14, cursor: "pointer", color: "#5A6474", border: "none", background: "transparent" }}
+                  className="flex size-9 items-center justify-center rounded-[7px] hover:bg-[#F6F6F4] disabled:opacity-35 md:size-[26px]"
+                  style={{ fontSize: 14, cursor: "pointer", color: "#3A3C42", border: "none", background: "transparent" }}
                 >
                   →
                 </button>
@@ -661,8 +665,8 @@ export function HistoryGraphView({
                 onClick={() => setDetailOpen((o) => !o)}
                 aria-pressed={detailOpen}
                 title={t("historyGraph.paneDetail")}
-                className="hidden size-[26px] flex-none items-center justify-center rounded-[7px] border hover:bg-[#F1F5FA] md:flex wide:hidden"
-                style={{ borderColor: "#DDE5F0", background: detailOpen ? "#EEF3FB" : "#fff", color: "#5A6474" }}
+                className="hidden size-[26px] flex-none items-center justify-center rounded-[7px] border hover:bg-[#F6F6F4] md:flex wide:hidden"
+                style={{ borderColor: "#ECEBE7", background: detailOpen ? "#F4F4F1" : "#fff", color: "#3A3C42" }}
               >
                 <PanelRight className="size-[13px]" />
               </button>
@@ -672,31 +676,39 @@ export function HistoryGraphView({
               <svg width="100%" height="100%" className="absolute inset-0">
                 {axisTicks.map((tick, i) => (
                   <g key={i}>
-                    <line x1={tick.x} y1={34} x2={tick.x} y2={H} stroke="#E3EAF4" strokeWidth={1} />
-                    <text x={tick.x} y={24} textAnchor="middle" fontFamily="var(--font-mono)" fontSize={10.5} fill="#8C97A8">
+                    <line x1={tick.x} y1={34} x2={tick.x} y2={H} stroke="#F1F0EC" strokeWidth={1} />
+                    <text x={tick.x} y={24} textAnchor="middle" fontFamily="var(--font-mono)" fontSize={10.5} fill="#8C8C86">
                       {tick.label}
                     </text>
                   </g>
                 ))}
                 {packs.map((p, i) => (
                   <g key={i} onClick={p.onZoomIn} style={{ cursor: "zoom-in" }}>
-                    <rect x={p.x} y={p.y} width={p.w} height={p.h} rx={14} fill="#EAF0F8" stroke="#CFDBEB" strokeDasharray="4 4" />
-                    <text x={p.cx} y={p.ty} textAnchor="middle" fontFamily="var(--font-sans)" fontSize={12} fontWeight={600} fill="#5A6474">
+                    <rect x={p.x} y={p.y} width={p.w} height={p.h} rx={14} fill="#F1F0EC" stroke="#E4E3DE" strokeDasharray="4 4" />
+                    <text x={p.cx} y={p.ty} textAnchor="middle" fontFamily="var(--font-sans)" fontSize={12} fontWeight={600} fill="#3A3C42">
                       {p.label}
                     </text>
                   </g>
                 ))}
                 {blobs.map((b) => (
                   <g key={b.id} onClick={b.onSelect} style={{ cursor: "pointer" }}>
-                    <rect x={b.x} y={b.y} width={b.w} height={b.h} rx={26} fill={b.tint} stroke={b.color} strokeWidth={b.sw} />
-                    {b.nodes.map((n, i) => (
-                      <circle key={i} cx={n.cx} cy={n.cy} r={11} fill={n.color} stroke="#fff" strokeWidth={1.4} />
-                    ))}
-                    <text x={b.lx} y={b.ly} fontFamily="var(--font-sans)" fontSize={12} fontWeight={600} fill="#3E4756">
+                    {/* A visible ring behind the selected card, tying it back to
+                        the open detail panel — the stroke-width bump alone read
+                        as "slightly bolder," not "this is the open one." */}
+                    {b.sw > 2 && (
+                      <rect x={b.x - 3} y={b.y - 3} width={b.w + 6} height={b.h + 6} rx={13} fill="none" stroke={b.color} strokeWidth={1.4} strokeOpacity={0.35} />
+                    )}
+                    <rect x={b.x} y={b.y} width={b.w} height={b.h} rx={10} fill={b.tint} stroke={b.color} strokeWidth={b.sw} />
+                    <rect x={b.x} y={b.y} width={4} height={b.h} fill={b.color} />
+                    {/* Filled dot = an event I was directly part of; hollow = one
+                        I only logged secondhand — same grammar the workflow
+                        diagram uses for its main-line vs. branch nodes. */}
+                    <circle cx={b.x + 15} cy={b.y + 15} r={4} fill={b.isDirect ? b.color : "#fff"} stroke={b.color} strokeWidth={1.4} />
+                    <text x={b.x + 24} y={b.y + 19} fontFamily="var(--font-sans)" fontSize={12} fontWeight={600} fill="#3A3C42">
                       {b.title}
                     </text>
-                    <text x={b.lx} y={b.ly2} fontFamily="var(--font-mono)" fontSize={10} fill="#8C97A8">
-                      {b.dateLabel}
+                    <text x={b.x + 24} y={b.y + 34} fontFamily="var(--font-mono)" fontSize={9.5} fill="#8C8C86">
+                      {b.metaLine}
                     </text>
                     {/* Branch-existence badge — visible on the canvas itself, so
                         "this event led to more" doesn't stay hidden until you
@@ -710,12 +722,12 @@ export function HistoryGraphView({
                     )}
                   </g>
                 ))}
-                <line x1={0} y1={34} x2={W} y2={34} stroke="#CFDBEB" strokeWidth={1} />
+                <line x1={0} y1={34} x2={W} y2={34} stroke="#E4E3DE" strokeWidth={1} />
               </svg>
             </div>
 
-            <div className="flex h-[86px] flex-none flex-col gap-[6px] px-4 py-[10px] md:h-[78px] md:px-[22px]" style={{ borderTop: "1px solid #DFE6F0", background: "rgba(255,255,255,.66)" }}>
-              <div className="flex justify-between gap-2" style={{ fontFamily: "var(--font-mono)", fontSize: 9, letterSpacing: "0.08em", textTransform: "uppercase", color: "#93A0B2" }}>
+            <div className="flex h-[86px] flex-none flex-col gap-[6px] px-4 py-[10px] md:h-[78px] md:px-[22px]" style={{ borderTop: "1px solid #ECEBE7", background: "rgba(255,255,255,.66)" }}>
+              <div className="flex justify-between gap-2" style={{ fontFamily: "var(--font-mono)", fontSize: 9, letterSpacing: "0.08em", textTransform: "uppercase", color: "#9A9A94" }}>
                 <span className="hidden sm:inline">{t("historyGraph.allHistory")}</span>
                 {scrubber && (
                   <span className="hidden truncate sm:inline">
@@ -745,7 +757,7 @@ export function HistoryGraphView({
                   if (e.key === "ArrowRight") setTOffset((o) => Math.max(0, o - 1));
                 }}
                 className="relative flex-1 cursor-ew-resize touch-none overflow-hidden rounded-[9px] border"
-                style={{ background: "#fff", borderColor: "#DDE5F0" }}
+                style={{ background: "#fff", borderColor: "#ECEBE7" }}
               >
                 {scrubber?.ticks.map((tick) => (
                   <div
@@ -757,12 +769,28 @@ export function HistoryGraphView({
                 {scrubber && (
                   <div
                     className="pointer-events-none absolute top-0 bottom-0 rounded-[7px]"
-                    style={{ background: "rgba(78,127,212,.14)", border: "1.5px solid #4E7FD4", left: scrubber.windowLeft, width: scrubber.windowWidth }}
+                    style={{ background: "rgba(78,127,212,.14)", border: "1.5px solid #5B8DEF", left: scrubber.windowLeft, width: scrubber.windowWidth }}
                   />
                 )}
               </div>
             </div>
           </div>
+
+          {/* Backdrop for the 768-1299 overlay case only: without it the detail
+              panel reads as broken layout (a card floating over content with no
+              visual cue it's a dismissible drawer) rather than an intentional
+              overlay. Hidden below md (there the panel IS the pane, full-width,
+              nothing underneath to dim) and at wide+ (static column, not an
+              overlay at all). */}
+          {selectedEvent && detailOpen && (
+            <button
+              type="button"
+              aria-label={t("cluster.expand.close")}
+              onClick={() => setDetailOpen(false)}
+              className="absolute inset-0 z-20 hidden cursor-default md:block wide:hidden"
+              style={{ background: "rgba(27,29,33,.24)", border: "none" }}
+            />
+          )}
 
           {/* RIGHT: detail panel. At >= 1300 it is a static third column beside
               the canvas. Between 768 and 1299 there is no room for a third
@@ -778,7 +806,7 @@ export function HistoryGraphView({
                 "md:absolute md:inset-y-0 md:right-0 md:z-30 md:w-[320px] md:shadow-[-8px_0_24px_-12px_rgba(27,29,33,.28)]",
                 "wide:static wide:flex wide:w-[314px] wide:flex-none wide:shadow-none",
               ].join(" ")}
-              style={{ background: "#fff", borderLeft: "1px solid #DFE6F0", maxHeight: "100%" }}
+              style={{ background: "#fff", borderLeft: "1px solid #ECEBE7", maxHeight: "100%" }}
             >
                   <div className="flex items-start gap-[10px]">
                     <div
@@ -787,7 +815,7 @@ export function HistoryGraphView({
                     />
                     <div className="min-w-0 flex-1">
                       <div style={{ fontSize: 14.5, fontWeight: 600, lineHeight: 1.3 }}>{selectedEvent.entityLabelStr}</div>
-                      <div style={{ fontFamily: "var(--font-mono)", fontSize: 10, color: "#8C97A8", marginTop: 3 }}>
+                      <div style={{ fontFamily: "var(--font-mono)", fontSize: 10, color: "#8C8C86", marginTop: 3 }}>
                         {format(selectedEvent.date, "d MMM yy", { locale: dateLocale })} · {t(`interactionType.${selectedEvent.kind}`)}
                       </div>
                     </div>
@@ -797,8 +825,8 @@ export function HistoryGraphView({
                         setDetailOpen(false);
                       }}
                       aria-label={t("cluster.expand.close")}
-                      className="flex size-7 flex-none items-center justify-center rounded-md hover:bg-[#F1F5FA]"
-                      style={{ fontSize: 13, color: "#A6AEBB", cursor: "pointer", background: "none", border: "none" }}
+                      className="flex size-7 flex-none items-center justify-center rounded-md hover:bg-[#F6F6F4]"
+                      style={{ fontSize: 13, color: "#A6A6A0", cursor: "pointer", background: "none", border: "none" }}
                     >
                       ✕
                     </button>
@@ -808,7 +836,7 @@ export function HistoryGraphView({
                     <button
                       onClick={() => setSelectedId(parentEvent.id)}
                       className="flex items-center gap-1 text-left hover:opacity-80"
-                      style={{ fontSize: 10.5, color: "#8C97A8", background: "none", border: "none", cursor: "pointer" }}
+                      style={{ fontSize: 10.5, color: "#8C8C86", background: "none", border: "none", cursor: "pointer" }}
                     >
                       <GitBranch className="size-2.5 shrink-0" />
                       <span className="truncate">
@@ -830,19 +858,19 @@ export function HistoryGraphView({
                   )}
 
                   <div>
-                    <div style={{ fontFamily: "var(--font-mono)", fontSize: 9, letterSpacing: "0.09em", textTransform: "uppercase", color: "#93A0B2", marginBottom: 8 }}>
+                    <div style={{ fontFamily: "var(--font-mono)", fontSize: 9, letterSpacing: "0.09em", textTransform: "uppercase", color: "#9A9A94", marginBottom: 8 }}>
                       {t("historyGraph.notes")}
                     </div>
                     <div
                       className="whitespace-pre-wrap"
-                      style={{ fontSize: 12.5, lineHeight: 1.55, color: "#3E4756", background: "#F7FAFD", border: "1px solid #E4EBF4", borderRadius: 11, padding: "11px 12px" }}
+                      style={{ fontSize: 12.5, lineHeight: 1.55, color: "#3A3C42", background: "#FBFBF9", border: "1px solid #F1F0EC", borderRadius: 11, padding: "11px 12px" }}
                     >
                       {selectedEvent.rawText}
                     </div>
                   </div>
 
                   <div>
-                    <div style={{ fontFamily: "var(--font-mono)", fontSize: 9, letterSpacing: "0.09em", textTransform: "uppercase", color: "#93A0B2", marginBottom: 8 }}>
+                    <div style={{ fontFamily: "var(--font-mono)", fontSize: 9, letterSpacing: "0.09em", textTransform: "uppercase", color: "#9A9A94", marginBottom: 8 }}>
                       {t("historyGraph.participants")}
                     </div>
                     <div className="flex flex-col gap-[6px]">
@@ -854,15 +882,15 @@ export function HistoryGraphView({
                           onClick={p.isMe ? undefined : () => router.push(`/contacts/${p.id}`)}
                           onKeyDown={p.isMe ? undefined : (e) => e.key === "Enter" && router.push(`/contacts/${p.id}`)}
                           onMouseDown={p.isMe ? undefined : (e) => e.preventDefault()}
-                          className={`flex items-center gap-[9px] rounded-[10px] border px-[9px] py-2 ${p.isMe ? "" : "cursor-pointer hover:bg-[#F7FAFD]"}`}
-                          style={{ borderColor: "#E9EEF6" }}
+                          className={`flex items-center gap-[9px] rounded-[10px] border px-[9px] py-2 ${p.isMe ? "" : "cursor-pointer hover:bg-[#FBFBF9]"}`}
+                          style={{ borderColor: "#ECEBE7" }}
                         >
                           <div className="size-[9px] shrink-0 rounded-full" style={{ background: p.color }} />
                           <div className="min-w-0">
                             <div className="truncate" style={{ fontSize: 12, fontWeight: 600 }}>
                               {p.name}
                             </div>
-                            {p.category && <div style={{ fontSize: 10.5, color: "#8C97A8" }}>{t(`category.${p.category}`)}</div>}
+                            {p.category && <div style={{ fontSize: 10.5, color: "#8C8C86" }}>{t(`category.${p.category}`)}</div>}
                           </div>
                         </div>
                       ))}
@@ -871,7 +899,7 @@ export function HistoryGraphView({
 
                   {touchedRelationships.length > 0 && (
                     <div>
-                      <div style={{ fontFamily: "var(--font-mono)", fontSize: 9, letterSpacing: "0.09em", textTransform: "uppercase", color: "#93A0B2", marginBottom: 8 }}>
+                      <div style={{ fontFamily: "var(--font-mono)", fontSize: 9, letterSpacing: "0.09em", textTransform: "uppercase", color: "#9A9A94", marginBottom: 8 }}>
                         {t("historyGraph.touchedRelationships")}
                       </div>
                       <div className="flex flex-col gap-[6px]">
@@ -880,8 +908,8 @@ export function HistoryGraphView({
                             key={c.id}
                             onClick={() => router.push(`/network?focus=${c.fromContactId}`)}
                             onMouseDown={(e) => e.preventDefault()}
-                            className="flex items-center gap-[7px] rounded-[10px] border px-[9px] py-[7px] text-left hover:bg-[#F7FAFD]"
-                            style={{ borderColor: "#E9EEF6", cursor: "pointer", background: "none" }}
+                            className="flex items-center gap-[7px] rounded-[10px] border px-[9px] py-[7px] text-left hover:bg-[#FBFBF9]"
+                            style={{ borderColor: "#ECEBE7", cursor: "pointer", background: "none" }}
                           >
                             <span className="min-w-0 flex-1 truncate" style={{ fontSize: 11.5 }}>
                               {c.fromName} ↔ {c.toName}
@@ -889,7 +917,7 @@ export function HistoryGraphView({
                             {c.relationship && (
                               <span
                                 className="shrink-0 truncate"
-                                style={{ fontSize: 9.5, fontWeight: 600, padding: "2px 6px", borderRadius: 20, background: "#F1F5FA", color: "#5A6474", maxWidth: 90 }}
+                                style={{ fontSize: 9.5, fontWeight: 600, padding: "2px 6px", borderRadius: 20, background: "#F6F6F4", color: "#3A3C42", maxWidth: 90 }}
                               >
                                 {c.relationship}
                               </span>

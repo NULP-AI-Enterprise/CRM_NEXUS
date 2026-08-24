@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { UsersRound } from "lucide-react";
+import { Maximize2, UsersRound } from "lucide-react";
 import { toast } from "sonner";
 
 import {
@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/accordion";
 import { ContactCard } from "@/components/dashboard/contact-card";
 import { CommunityFormDialog } from "@/components/dashboard/community-form-dialog";
+import { CommunityDetailPanel } from "@/components/dashboard/community-detail-panel";
 import { ConfirmDeleteDialog } from "@/components/confirm-delete-dialog";
 import { EntityCardActions } from "@/components/dashboard/entity-card";
 import { useTranslation } from "@/lib/i18n/context";
@@ -25,6 +26,7 @@ export function CommunityAccordion({ communities }: { communities: CommunityWith
   const router = useRouter();
   const [editingCommunity, setEditingCommunity] = useState<CommunityModel | null>(null);
   const [deletingCommunity, setDeletingCommunity] = useState<CommunityModel | null>(null);
+  const [detailCommunityId, setDetailCommunityId] = useState<string | null>(null);
 
   if (communities.length === 0) {
     return (
@@ -48,18 +50,26 @@ export function CommunityAccordion({ communities }: { communities: CommunityWith
             style={{ borderLeftWidth: "3px", borderLeftColor: "#9B7BE0" }}
           >
             <AccordionItem value={community.id} className="border-b-0">
-              <AccordionTrigger className="py-[15px] pr-16 hover:no-underline">
-                <div className="flex items-start gap-[10px] text-left">
+              <AccordionTrigger className="py-[15px] pr-32 hover:no-underline">
+                <div className="flex items-center gap-[10px] text-left">
                   <div
                     className="flex size-7 shrink-0 items-center justify-center rounded-[9px]"
                     style={{ backgroundColor: "#F1EBFC" }}
                   >
                     <UsersRound className="size-4" style={{ color: "#4E3487" }} />
                   </div>
-                  <div className="min-w-0">
-                    <p className="text-[14px] font-semibold leading-[1.3] tracking-[-0.2px] text-foreground">
-                      {community.name}
-                    </p>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      <p className="truncate text-[14px] font-semibold leading-[1.3] tracking-[-0.2px] text-foreground">
+                        {community.name}
+                      </p>
+                      <span
+                        className="shrink-0 rounded-[6px] px-[7px] py-[2px] font-mono text-[10px] font-medium"
+                        style={{ backgroundColor: "#F1EBFC", color: "#7B5BBF" }}
+                      >
+                        {community.contacts.length}
+                      </span>
+                    </div>
                     {community.description && (
                       <p className="mt-0.5 truncate text-[11.5px] text-muted-foreground">{community.description}</p>
                     )}
@@ -67,24 +77,22 @@ export function CommunityAccordion({ communities }: { communities: CommunityWith
                 </div>
               </AccordionTrigger>
 
-              <EntityCardActions
-                onEdit={() => setEditingCommunity(community)}
-                onDelete={() => setDeletingCommunity(community)}
-                className="absolute right-4 top-[15px]"
-              />
-
-              <div
-                className="flex items-center justify-between rounded-[11px] px-[10px] py-[9px]"
-                style={{ backgroundColor: "#FAF7FE", border: "1px solid #EFE6FA" }}
-              >
-                <div>
-                  <div className="font-mono text-[8.5px] uppercase tracking-[0.08em]" style={{ color: "#A79ABF" }}>
-                    {t("community.membersLabel")}
-                  </div>
-                  <div className="mt-0.5 text-[13px] font-semibold" style={{ color: "#41326B" }}>
-                    {community.contacts.length}
-                  </div>
-                </div>
+              <div className="absolute right-4 top-[15px] flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setDetailCommunityId(community.id);
+                  }}
+                  title={t("community.detail.viewDetails")}
+                  className="flex items-center gap-1 rounded-md px-2 py-1 text-[11px] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                >
+                  <Maximize2 className="size-3" />
+                </button>
+                <EntityCardActions
+                  onEdit={() => setEditingCommunity(community)}
+                  onDelete={() => setDeletingCommunity(community)}
+                  className="opacity-100"
+                />
               </div>
 
               <AccordionContent className="pb-3.5 pt-2.5">
@@ -128,6 +136,8 @@ export function CommunityAccordion({ communities }: { communities: CommunityWith
           }}
         />
       )}
+
+      <CommunityDetailPanel communityId={detailCommunityId} onOpenChange={(open) => !open && setDetailCommunityId(null)} />
     </>
   );
 }

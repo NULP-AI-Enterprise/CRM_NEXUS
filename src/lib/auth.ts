@@ -46,9 +46,20 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       }
       return token;
     },
-    session({ session, token }) {
+    async session({ session, token }) {
       if (session.user && token.id) {
         session.user.id = token.id as string;
+        // Read name/email fresh from the DB rather than trusting the JWT's
+        // snapshot from sign-in time, so a profile edit is visible immediately
+        // on the next page load instead of only after the token is re-issued.
+        const dbUser = await prisma.user.findUnique({
+          where: { id: token.id as string },
+          select: { name: true, email: true },
+        });
+        if (dbUser) {
+          session.user.name = dbUser.name;
+          session.user.email = dbUser.email;
+        }
       }
       return session;
     },

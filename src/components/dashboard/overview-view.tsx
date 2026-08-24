@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { format } from "date-fns";
 import { uk, enUS } from "date-fns/locale";
-import { Layers, Share2, History, AlertTriangle, ArrowUpRight } from "lucide-react";
+import { ArrowUpRight } from "lucide-react";
 
 import { NetworkGraphPreview } from "@/components/graph/network-graph-preview";
 import { StatCard } from "@/components/dashboard/stat-card";
@@ -31,34 +31,43 @@ export function OverviewView({ summary, topHubs }: OverviewViewProps) {
 
   return (
     <div className="flex flex-col gap-5 pb-12">
-      <div>
-        <p className="font-mono text-[11px] uppercase tracking-wider text-muted-foreground">
-          {format(new Date(summary.today), "EEEE, d MMMM yyyy", { locale: dateLocale })}
-        </p>
-        <h1 className="mt-0.5 font-heading text-[26px] font-semibold tracking-[-0.02em] text-foreground">
-          {t("dashboard.overviewHeading")}
-        </h1>
+      <div className="flex flex-wrap items-start justify-between gap-x-3 gap-y-2">
+        <div>
+          <p className="kicker" style={{ fontSize: "11px", color: "#a6a6a0" }}>
+            {format(new Date(summary.today), "EEEE, d MMMM yyyy", { locale: dateLocale })}
+          </p>
+          <h1 className="mt-[7px] font-heading text-[27px] font-semibold tracking-[-0.6px] text-foreground">
+            {t("dashboard.overviewHeading")}
+          </h1>
+        </div>
+        <div className="flex gap-[9px]">
+          <Link
+            href="/contacts"
+            className="whitespace-nowrap rounded-[10px] bg-[#1b1d21] px-[15px] py-[9px] text-[12.5px] font-semibold text-white transition-colors hover:bg-[#33363d]"
+          >
+            {t("dashboard.newEntity")}
+          </Link>
+          <Link
+            href="/network"
+            className="whitespace-nowrap rounded-[10px] border border-[#e4e3de] bg-card px-[15px] py-[9px] text-[12.5px] font-semibold text-foreground transition-colors hover:border-[#c9c8c2]"
+          >
+            {t("dashboard.openGraph")}
+          </Link>
+        </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
+      <div className="grid grid-cols-2 gap-[14px] sm:grid-cols-4">
         <StatCard
           label={t("dashboard.stat.entities")}
-          icon={Layers}
           value={summary.entitiesTracked}
           unit={t("dashboard.stat.entitiesUnit")}
-        />
-
-        <StatCard
-          label={t("dashboard.stat.relationships")}
-          icon={Share2}
-          value={summary.relationshipsCount}
-          unit={t("dashboard.stat.relationshipsUnit")}
         >
           {categoryTotal > 0 && (
-            <div className="flex h-[6px] w-full overflow-hidden rounded-[3px] bg-muted">
+            <div className="flex h-[6px] w-full gap-[4px] overflow-hidden rounded-[3px]">
               {categoryBreakdown.map(([category, count]) => (
                 <div
                   key={category}
+                  className="rounded-[2px]"
                   style={{ width: `${(count / categoryTotal) * 100}%`, backgroundColor: CATEGORY_COLORS[category].dot }}
                   title={`${category}: ${count}`}
                 />
@@ -68,8 +77,13 @@ export function OverviewView({ summary, topHubs }: OverviewViewProps) {
         </StatCard>
 
         <StatCard
+          label={t("dashboard.stat.relationships")}
+          value={summary.relationshipsCount}
+          unit={t("dashboard.stat.relationshipsUnit")}
+        />
+
+        <StatCard
           label={t("dashboard.stat.interactions")}
-          icon={History}
           value={summary.interactionsCount}
           unit={t("dashboard.stat.interactionsUnit")}
         >
@@ -78,10 +92,9 @@ export function OverviewView({ summary, topHubs }: OverviewViewProps) {
 
         <StatCard
           label={t("dashboard.stat.needsAttention")}
-          icon={AlertTriangle}
           value={summary.needsAttention.length}
-          unit={t("dashboard.stat.needsAttentionUnit")}
-          unitClassName="text-[11px] font-semibold text-destructive"
+          delta={t("dashboard.stat.staleDelta")}
+          deltaClassName="text-[#ef8163]"
         >
           {summary.needsAttention.length > 0 ? (
             <div className="flex flex-col gap-0.5">

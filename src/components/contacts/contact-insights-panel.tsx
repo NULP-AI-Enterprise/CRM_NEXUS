@@ -6,10 +6,7 @@ import { useRouter } from "next/navigation";
 import { Link2, Trash2, Plus, ExternalLink, UsersRound, Star } from "lucide-react";
 import { toast } from "sonner";
 
-import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { EntityIconBadge } from "@/components/dashboard/entity-card";
-import { initials } from "@/lib/contact-display";
+import { initials, CATEGORY_COLORS } from "@/lib/contact-display";
 import { useTranslation } from "@/lib/i18n/context";
 import type { CompanyModel, ContactModel, ContactConnectionModel } from "@/generated/prisma/models";
 import { AddConnectionDialog } from "@/components/graph/add-connection-dialog";
@@ -38,7 +35,6 @@ export function ContactInsightsPanel({ contact }: { contact: ContactDetailType }
   const [isDeleting, startDeleteTransition] = useTransition();
   const [expandedConnectionId, setExpandedConnectionId] = useState<string | null>(null);
 
-  // Flatten all connections
   const directConnections = [
     ...contact.outgoingConnections.map((c) => ({
       id: c.id,
@@ -61,12 +57,8 @@ export function ContactInsightsPanel({ contact }: { contact: ContactDetailType }
   const handleDeleteConnection = (connectionId: string) => {
     startDeleteTransition(async () => {
       try {
-        const res = await fetch(`/api/connections?id=${connectionId}`, {
-          method: "DELETE",
-        });
-        if (!res.ok) {
-          throw new Error(t("contact.connectionRemoveError"));
-        }
+        const res = await fetch(`/api/connections?id=${connectionId}`, { method: "DELETE" });
+        if (!res.ok) throw new Error(t("contact.connectionRemoveError"));
         toast.success(t("contact.connectionRemoved"));
         router.refresh();
       } catch (err) {
@@ -77,14 +69,14 @@ export function ContactInsightsPanel({ contact }: { contact: ContactDetailType }
 
   return (
     <div className="flex flex-col gap-5">
-      {/* Community Memberships */}
+      {/* Community memberships — pill strip */}
       {contact.communities && contact.communities.length > 0 && (
         <div className="flex flex-wrap items-center gap-1.5">
           <UsersRound className="size-3.5 text-muted-foreground" />
           {contact.communities.map((community) => (
             <span
               key={community.id}
-              className="inline-flex items-center rounded-md border border-border bg-muted px-2 py-0.5 text-xs text-muted-foreground"
+              className="inline-flex items-center rounded-[7px] border border-[#EFE6FA] bg-[#FAF7FE] px-2 py-[3px] text-[11px] text-[#7B5BBF]"
             >
               {community.name}
             </span>
@@ -92,100 +84,93 @@ export function ContactInsightsPanel({ contact }: { contact: ContactDetailType }
         </div>
       )}
 
-      {/* Direct Network Connections Manager — the "Relationships" column,
-          matching Weave's detail-page anatomy. Temperament/needs/valuePotential/
-          fullSummary render in ContactProfileBody (the left column) instead. */}
-      <div className="rounded-xl border border-border bg-card p-4 space-y-3.5">
-        <div className="flex items-center justify-between">
+      {/* Connections panel */}
+      <div className="rounded-[16px] border border-border bg-card overflow-hidden">
+        <div className="flex items-center justify-between px-[18px] py-[13px] border-b border-border">
           <div className="flex items-center gap-2">
-            <Link2 className="size-3.5 text-muted-foreground" />
-            <h3 className="text-xs font-semibold text-foreground uppercase tracking-wider">
-              {t("contact.connectionsTitle")}
-            </h3>
-            <span className="rounded-md border border-border bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground font-mono">
+            <Link2 className="size-3.5 text-[#9a9a94]" />
+            <span className="kicker" style={{ fontSize: "9.5px" }}>{t("contact.connectionsTitle")}</span>
+            <span
+              className="rounded-[6px] px-[7px] py-[2px] font-mono text-[10px]"
+              style={{ backgroundColor: "#f1f0ec", color: "#6e7480" }}
+            >
               {directConnections.length}
             </span>
           </div>
-          <Button
-            size="sm"
+          <button
             onClick={() => setIsConnectOpen(true)}
-            className="bg-primary hover:bg-primary/90 text-primary-foreground text-xs h-7 px-3 gap-1.5 rounded-md font-medium"
+            className="flex items-center gap-1.5 rounded-[9px] bg-[#1b1d21] px-[11px] py-[6px] text-[11.5px] font-semibold text-white transition-colors hover:bg-[#33363d]"
           >
             <Plus className="size-3" />
             {t("contact.addConnection")}
-          </Button>
+          </button>
         </div>
 
         {directConnections.length === 0 ? (
-          <div className="rounded-lg border border-dashed border-border p-6 text-center text-xs text-muted-foreground">
+          <div className="px-[18px] py-10 text-center text-[12px] text-muted-foreground">
             {t("contact.noConnections")}
           </div>
         ) : (
-          <div className="grid gap-2 sm:grid-cols-2">
+          <div className="grid gap-[1px] bg-border sm:grid-cols-2">
             {directConnections.map((conn) => {
               const peer = conn.peer!;
-              const hasExpandableContent = conn.strength != null || Boolean(conn.notes);
+              const colors = CATEGORY_COLORS[(peer as ContactModel).category] || CATEGORY_COLORS.OTHER;
+              const hasExpandable = conn.strength != null || Boolean(conn.notes);
               const isExpanded = expandedConnectionId === conn.id;
 
               return (
                 <div
                   key={conn.id}
-                  onClick={
-                    hasExpandableContent
-                      ? () => setExpandedConnectionId(isExpanded ? null : conn.id)
-                      : undefined
-                  }
-                  className={`group relative flex flex-col gap-2 rounded-lg border border-border bg-muted/60 p-2.5 text-xs transition-colors hover:bg-muted ${hasExpandableContent ? "cursor-pointer" : ""}`}
+                  onClick={hasExpandable ? () => setExpandedConnectionId(isExpanded ? null : conn.id) : undefined}
+                  className={`group relative flex flex-col gap-2.5 bg-card px-[14px] py-[12px] transition-colors hover:bg-muted/40 ${hasExpandable ? "cursor-pointer" : ""}`}
                 >
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      <div className="relative shrink-0">
-                        <Avatar className="size-7 bg-secondary">
-                          <AvatarFallback className="text-[10px] font-medium bg-secondary text-secondary-foreground">
-                            {initials(peer.fullName)}
-                          </AvatarFallback>
-                        </Avatar>
-                        <EntityIconBadge
-                          icon={Link2}
-                          className="absolute -bottom-1 -right-1 size-3.5 rounded-full border-2 border-card bg-secondary p-0 [&>svg]:size-2"
-                        />
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-[9px] min-w-0">
+                      {/* Inline circle avatar — no shadcn Avatar */}
+                      <div
+                        className="flex size-[30px] shrink-0 items-center justify-center rounded-full text-[10px] font-semibold"
+                        style={{ backgroundColor: colors.bg, color: colors.text }}
+                      >
+                        {initials(peer.fullName)}
                       </div>
 
                       <div className="min-w-0">
-                        <div className="flex items-center gap-1.5">
+                        <div className="flex flex-wrap items-center gap-1.5">
                           <Link
                             href={`/contacts/${peer.id}`}
                             onClick={(e) => e.stopPropagation()}
-                            className="relative z-10 font-medium text-foreground hover:underline truncate text-xs"
+                            className="relative z-10 truncate text-[12.5px] font-semibold text-foreground hover:underline"
                           >
                             {peer.fullName}
                           </Link>
-                          <span className="text-[10px] text-muted-foreground rounded bg-card px-1 py-0.2 border border-border">
-                            {conn.relationship || t("contact.defaultRelationship")}
-                          </span>
+                          {conn.relationship && (
+                            <span
+                              className="rounded-[5px] border px-[6px] py-[2px] text-[10px] text-muted-foreground"
+                              style={{ borderColor: "#edece8", backgroundColor: "#f7f7f4" }}
+                            >
+                              {conn.relationship}
+                            </span>
+                          )}
                         </div>
-                        <p className="text-muted-foreground text-[11px] truncate">
-                          {peer.role || peer.companyName || t("contact.defaultRole")}
+                        <p className="mt-[1px] truncate text-[11px] text-muted-foreground">
+                          {(peer as ContactModel).role || (peer as ContactModel).companyName || t("contact.defaultRole")}
                         </p>
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-1 shrink-0 ml-2 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
+                    <div className="flex shrink-0 items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
                       <Link
                         href={`/contacts/${peer.id}`}
                         onClick={(e) => e.stopPropagation()}
-                        className="relative z-10 p-1 text-muted-foreground hover:text-foreground rounded"
+                        className="relative z-10 rounded-[7px] p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
                         title={t("contact.viewProfile")}
                       >
                         <ExternalLink className="size-3" />
                       </Link>
                       <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleDeleteConnection(conn.id);
-                        }}
+                        onClick={(e) => { e.stopPropagation(); handleDeleteConnection(conn.id); }}
                         disabled={isDeleting}
-                        className="relative z-10 p-1 text-muted-foreground hover:text-destructive rounded transition-colors"
+                        className="relative z-10 rounded-[7px] p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-destructive"
                         title={t("contact.removeConnection")}
                       >
                         <Trash2 className="size-3" />
@@ -193,8 +178,8 @@ export function ContactInsightsPanel({ contact }: { contact: ContactDetailType }
                     </div>
                   </div>
 
-                  {isExpanded && (
-                    <div className="space-y-1.5 border-t border-border pt-2">
+                  {isExpanded && (conn.strength != null || conn.notes) && (
+                    <div className="space-y-1.5 border-t border-border pt-2.5">
                       {conn.strength != null && (
                         <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
                           <Star className="size-3 fill-muted-foreground" />
@@ -202,7 +187,7 @@ export function ContactInsightsPanel({ contact }: { contact: ContactDetailType }
                         </div>
                       )}
                       {conn.notes && (
-                        <p className="text-[11px] leading-relaxed text-foreground/90 whitespace-pre-wrap">
+                        <p className="text-[11.5px] leading-relaxed text-foreground/90 whitespace-pre-wrap">
                           {conn.notes}
                         </p>
                       )}
@@ -220,9 +205,7 @@ export function ContactInsightsPanel({ contact }: { contact: ContactDetailType }
         onOpenChange={setIsConnectOpen}
         fromContact={{ id: contact.id, name: contact.fullName }}
         availableContacts={contact.otherContacts}
-        onSuccess={() => {
-          router.refresh();
-        }}
+        onSuccess={() => { router.refresh(); }}
       />
     </div>
   );
