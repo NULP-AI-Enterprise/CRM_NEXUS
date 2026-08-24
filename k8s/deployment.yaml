@@ -39,7 +39,7 @@ spec:
           # command, not a probe)
         - name: migrate
           # CI automatically updates this tag after each push (see .github/workflows/docker-build.yml)
-          image: ghcr.io/nulp-ai-enterprise/personal-crm-migrator:sha-aea7a45
+          image: ghcr.io/nulp-ai-enterprise/personal-crm-migrator:sha-22e27c8
           imagePullPolicy: Always
           env:
             - name: DATABASE_URL
@@ -49,7 +49,7 @@ spec:
                   key: DATABASE_URL
       containers:
         - name: personal-crm
-          image: ghcr.io/nulp-ai-enterprise/personal-crm:sha-aea7a45
+          image: ghcr.io/nulp-ai-enterprise/personal-crm:sha-22e27c8
           imagePullPolicy: Always
           ports:
             - name: http
