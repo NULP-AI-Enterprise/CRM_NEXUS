@@ -703,6 +703,46 @@ export const dictionary = {
     en: "Replace <your-api-key> with a key generated above.",
     uk: "Замініть <your-api-key> на ключ, згенерований вище.",
   },
+
+  // ---- settings: OAuth clients (Claude web/mobile/desktop "Connect") ----
+  "settings.oauthClients.title": { en: "OAuth connections", uk: "OAuth-підключення" },
+  "settings.oauthClients.description": {
+    en: "For Claude's web, mobile, and desktop \"Connect\" button — an alternative to API keys for clients that don't support custom headers.",
+    uk: "Для кнопки \"Connect\" у Claude web, mobile та desktop — альтернатива API-ключам для клієнтів без підтримки кастомних заголовків.",
+  },
+  "settings.oauthClients.create": { en: "Create OAuth client", uk: "Створити OAuth-клієнт" },
+  "settings.oauthClients.createHint": {
+    en: "Redirect URIs are pre-filled to Claude's own — no need to enter anything but a name.",
+    uk: "Redirect URI вже прописані під Claude — крім назви, більше нічого вводити не треба.",
+  },
+  "settings.oauthClients.nameRequired": { en: "Name is required.", uk: "Назва обов'язкова." },
+  "settings.oauthClients.empty": { en: "No OAuth clients yet.", uk: "Ще немає жодного OAuth-клієнта." },
+  "settings.oauthClients.revealTitle": { en: "Your new OAuth client", uk: "Ваш новий OAuth-клієнт" },
+  "settings.oauthClients.clientId": { en: "Client ID", uk: "Client ID" },
+  "settings.oauthClients.clientSecret": { en: "Client secret", uk: "Client secret" },
+  "settings.oauthClients.redirectUri": { en: "Redirect URI (paste into Claude if asked)", uk: "Redirect URI (вставте в Claude, якщо запитає)" },
+  "settings.oauthClients.revoke": { en: "Revoke", uk: "Відкликати" },
+  "settings.oauthClients.revokeConfirm": {
+    en: "Revoke \"{name}\"? This immediately disconnects it — any access and refresh tokens it issued stop working right away.",
+    uk: "Відкликати \"{name}\"? Це одразу відʼєднає клієнта — усі видані ним access- і refresh-токени перестануть працювати негайно.",
+  },
+  "settings.oauthClients.revoked": { en: "Client revoked", uk: "Клієнт відкликано" },
+
+  // ---- OAuth consent screen (/oauth/authorize) ----
+  "oauth.authorize.errorTitle": { en: "Can't authorize this request", uk: "Не вдалось авторизувати запит" },
+  "oauth.authorize.invalidRedirect": {
+    en: "This authorization request has an unrecognized or missing redirect address, so it can't be completed safely.",
+    uk: "У цього запиту на авторизацію невідома або відсутня адреса повернення, тож безпечно завершити його неможливо.",
+  },
+  "oauth.authorize.title": { en: "Connect {name}?", uk: "Підключити {name}?" },
+  "oauth.authorize.description": {
+    en: "This will let it read and, if you allow, update your Nexus CRM data.",
+    uk: "Це дозволить читати, а за вашим вибором — і оновлювати ваші дані в Nexus CRM." ,
+  },
+  "oauth.authorize.redirectsTo": { en: "Redirects to:", uk: "Повертається на:" },
+  "oauth.authorize.scope": { en: "Access", uk: "Доступ" },
+  "oauth.authorize.allow": { en: "Allow", uk: "Дозволити" },
+  "oauth.authorize.deny": { en: "Deny", uk: "Відхилити" },
 } as const satisfies Record<string, Entry>;
 
 export type DictionaryKey = keyof typeof dictionary;

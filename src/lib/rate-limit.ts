@@ -34,6 +34,7 @@ export const RATE_LIMITS = {
   accountUpdateProfile: { limit: 10, windowMs: 60 * 60 * 1000 },
   accountChangePassword: { limit: 5, windowMs: 60 * 60 * 1000 },
   mcpToolCall: { limit: 60, windowMs: 60 * 1000 },
+  oauthToken: { limit: 30, windowMs: 60 * 1000 },
   adminRead: { limit: 120, windowMs: 60 * 1000 },
   adminWrite: { limit: 30, windowMs: 60 * 1000 },
 } as const;

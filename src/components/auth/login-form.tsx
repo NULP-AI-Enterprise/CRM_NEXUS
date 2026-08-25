@@ -20,7 +20,7 @@ import { SubmitButton } from "@/components/submit-button";
 import { useTranslation } from "@/lib/i18n/context";
 import { ResendVerificationLink } from "@/components/auth/resend-verification-link";
 
-export function LoginForm() {
+export function LoginForm({ callbackUrl }: { callbackUrl?: string }) {
   const { t } = useTranslation();
   const [state, formAction] = useActionState(loginAction, null);
 
@@ -36,6 +36,7 @@ export function LoginForm() {
         </CardAction>
       </CardHeader>
       <form action={formAction}>
+        {callbackUrl && <input type="hidden" name="callbackUrl" value={callbackUrl} />}
         <CardContent className="flex flex-col gap-4">
           <div className="flex flex-col gap-2">
             <Label htmlFor="email">{t("auth.login.email")}</Label>

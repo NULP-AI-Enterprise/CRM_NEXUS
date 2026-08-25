@@ -1093,6 +1093,44 @@ rate-limiter (`src/lib/rate-limit.ts`) без координації між ре
 підтримку remote MCP поступово — перевіряти актуальну документацію
 провайдера перед підключенням, а не покладатись на цей опис.
 
+## 5b-1. OAuth 2.1 для Claude web/mobile/desktop ("Connect")
+
+Статичний Bearer-ключ (§5b) чудово працює для Claude Code/Desktop через
+`.mcp.json`, але кастомний конектор у Claude web/mobile побудований навколо
+кнопки "Connect" (OAuth) — статичний заголовок там доступний лише в беті й
+не всім. Тому застосунок додатково працює як OAuth 2.1 + PKCE-сервер
+авторизації для того самого `/api/mcp`.
+
+**Без Dynamic Client Registration** — користувач створює один
+`OAuthClient` на сторінці `/settings` (модель `OAuthClient`,
+`prisma/schema.prisma`), вставляє `client_id`/`client_secret` у Advanced
+Settings при додаванні кастомного конектора в Claude. Redirect URI не
+вводиться вручну — `src/lib/mcp/oauth.ts`'s `ALLOWED_REDIRECT_URIS` містить
+жорстко прописані домени Claude (`https://claude.ai/api/mcp/auth_callback`,
+`https://claude.com/api/mcp/auth_callback`), бо реальний споживач сьогодні
+рівно один.
+
+- **Флоу**: `GET /oauth/authorize` (сторінка згоди, потребує сесії — інакше
+  редірект на `/login?callbackUrl=...`) → `POST /api/oauth/authorize`
+  (перевірка + видача одноразового коду) → `POST /api/oauth/token`
+  (обмін коду на пару access+refresh, з PKCE-перевіркою).
+- **Access-токен — це `ApiKey`-рядок** (`generateApiKey()` з
+  `src/lib/mcp/auth.ts`), просто з `oauthClientId` і TTL 1 година — MCP-роут
+  (`src/app/api/mcp/route.ts`) не потребує жодних змін для розпізнавання
+  таких токенів. `listApiKeys()` фільтрує `oauthClientId: null`, інакше
+  ротація refresh-токена (~щогодини) захаращувала б список ключів у Settings.
+- **Refresh-токен** (`OAuthRefreshToken`, 90 днів) ротується атомарно —
+  одна interactive-транзакція видаляє старий і створює нову пару лише якщо
+  все валідно; невдала спроба не "спалює" робочий токен користувача.
+- **Відкликання каскадне**: `DELETE /api/oauth-clients/[id]` в одній
+  транзакції ставить `revokedAt` клієнту, видаляє всі його refresh-токени й
+  ставить `revokedAt` усім його `ApiKey`-рядкам — розрив зв'язку в UI справді
+  розриває доступ негайно, а не просто ховає рядок зі списку.
+- **Discovery**: `/.well-known/oauth-authorization-server` і
+  `/.well-known/oauth-protected-resource` — не буквальна `app/.well-known/`
+  директорія (непідтверджена поведінка в App Router), а `rewrites()` у
+  `next.config.ts` на звичайні роути під `src/app/api/well-known/`.
+
 ## 5c. Адмінка (`/admin`)
 
 Перегляд і CRUD-редагування даних **будь-якого** користувача — Contacts

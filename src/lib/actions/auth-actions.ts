@@ -28,6 +28,19 @@ const loginSchema = z.object({
   password: z.string().min(1),
 });
 
+/** Same-origin-relative check for a post-login redirect target (e.g. back to
+ * the OAuth consent screen). Must start with "/" and reject anything that
+ * could resolve to a different origin — a bare "//host" or "://host" scheme
+ * jump, or a leading backslash, which browsers normalize to "/" and which is
+ * a well-known bypass of naive "starts with slash" allowlists. */
+function safeCallbackUrl(value: FormDataEntryValue | null): string | null {
+  if (typeof value !== "string" || !value.startsWith("/")) return null;
+  if (value.startsWith("//") || value.includes("://") || value.includes("\\") || value.includes("%5c") || value.includes("%5C")) {
+    return null;
+  }
+  return value;
+}
+
 const registerSchema = z.object({
   name: z.string().trim().max(100).nullish(),
   email: z.string().email(),
@@ -81,8 +94,10 @@ export async function loginAction(
     }
   }
 
+  const redirectTo = safeCallbackUrl(formData.get("callbackUrl")) ?? "/dashboard";
+
   try {
-    await signIn("credentials", { email, password, redirectTo: "/dashboard" });
+    await signIn("credentials", { email, password, redirectTo });
   } catch (error) {
     if (error instanceof AuthError) {
       return { error: t("auth.login.invalidCredentials") };

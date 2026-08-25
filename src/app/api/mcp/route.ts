@@ -7,9 +7,16 @@ import { checkRateLimit } from "@/lib/rate-limit";
 async function handleMcpRequest(request: Request): Promise<Response> {
   const authContext = await resolveApiKeyContext(request);
   if (!authContext) {
+    const origin = process.env.APP_URL || "http://localhost:3000";
     return Response.json(
       { jsonrpc: "2.0", error: { code: -32001, message: "Unauthorized" }, id: null },
-      { status: 401 },
+      {
+        status: 401,
+        // Points an OAuth-capable client (e.g. Claude's web connector) at
+        // the protected-resource metadata so it can discover /oauth/authorize
+        // and /api/oauth/token — the standard RFC 9728 discovery trigger.
+        headers: { "WWW-Authenticate": `Bearer resource_metadata="${origin}/.well-known/oauth-protected-resource"` },
+      },
     );
   }
 

@@ -27,6 +27,9 @@ model User {
   verificationTokens  EmailVerificationToken[]
   passwordResetTokens PasswordResetToken[]
   apiKeys             ApiKey[]
+  oauthClients        OAuthClient[]
+  oauthAuthCodes      OAuthAuthorizationCode[]
+  oauthRefreshTokens  OAuthRefreshToken[]
 }
 
 /// Single-use token emailed to a user to confirm ownership of their address.
@@ -83,7 +86,86 @@ model ApiKey {
   userId String
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  /// Set when this row was minted by the OAuth token endpoint rather than
+  /// created by hand in Settings — null for user-generated keys. Lets
+  /// listApiKeys() exclude OAuth churn (a fresh row roughly every refresh)
+  /// from the manual-keys list, and lets revoking an OAuthClient cascade to
+  /// every access token it ever issued.
+  oauthClientId String?
+  oauthClient   OAuthClient? @relation(fields: [oauthClientId], references: [id], onDelete: SetNull)
+
   @@index([userId])
+  @@index([oauthClientId])
+}
+
+/// A pre-registered OAuth 2.1 client (confidential — has a secret) that lets
+/// Claude's web/mobile/desktop "Connect" flow authorize against the MCP
+/// server, as an alternative to the static ApiKey Bearer-token scheme used by
+/// Claude Code/Desktop's .mcp.json. No Dynamic Client Registration: the user
+/// creates one of these in Settings and pastes clientId/clientSecret into
+/// Claude's Advanced Settings. Redirect URIs are NOT stored per-client — they
+/// are validated against one hardcoded allowlist in src/lib/mcp/oauth.ts,
+/// since there is exactly one real consumer (Claude) today.
+model OAuthClient {
+  id               String    @id @default(cuid())
+  name             String
+  clientId         String    @unique
+  clientSecretHash String
+  revokedAt        DateTime?
+  createdAt        DateTime  @default(now())
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  accessTokens  ApiKey[]
+  authCodes     OAuthAuthorizationCode[]
+  refreshTokens OAuthRefreshToken[]
+
+  @@index([userId])
+}
+
+/// Single-use authorization code from the /oauth/authorize consent step,
+/// redeemed at /api/oauth/token. Stores the PKCE challenge (verified at
+/// redemption, never here) and the exact redirectUri used at /authorize, so
+/// /token can reject a mismatched redirect_uri per RFC 6749 4.1.3.
+model OAuthAuthorizationCode {
+  id                  String      @id @default(cuid())
+  code                String      @unique
+  redirectUri         String
+  scope               ApiKeyScope
+  redactSensitive     Boolean
+  codeChallenge       String
+  codeChallengeMethod String
+  expiresAt           DateTime
+  createdAt           DateTime    @default(now())
+
+  clientId String
+  client   OAuthClient @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  userId   String
+  user     User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([clientId])
+}
+
+/// Long-lived, single-use, rotating token minted alongside every OAuth access
+/// token (ApiKey row). Redeeming one atomically deletes it and mints a fresh
+/// access token + a new refresh token together — never used twice.
+model OAuthRefreshToken {
+  id              String      @id @default(cuid())
+  token           String      @unique
+  scope           ApiKeyScope
+  redactSensitive Boolean
+  expiresAt       DateTime
+  createdAt       DateTime    @default(now())
+
+  clientId String
+  client   OAuthClient @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  userId   String
+  user     User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([clientId])
 }
 
 /// A looser group affiliation a contact belongs to (meetup, alumni network,
@@ -134,9 +216,9 @@ enum ContactCategory {
 
 /// A person in the user's network.
 model Contact {
-  id     String  @id @default(cuid())
+  id       String  @id @default(cuid())
   fullName String
-  role   String?
+  role     String?
 
   companyId   String?
   company     Company? @relation(fields: [companyId], references: [id], onDelete: SetNull)
@@ -178,7 +260,7 @@ model ContactConnection {
   userId        String
   fromContactId String
   toContactId   String
-  relationship  String?  // e.g. "Колега", "Партнер", "Інвестор", "Познайомив", "Клієнт", "Друг", "Ментор"
+  relationship  String? // e.g. "Колега", "Партнер", "Інвестор", "Познайомив", "Клієнт", "Друг", "Ментор"
   strength      Int      @default(1) // 1 to 5
   notes         String?  @db.Text
   createdAt     DateTime @default(now())
@@ -233,8 +315,8 @@ model Interaction {
   /// the schema): a branch's own children collapse onto it in the UI rather
   /// than nesting further, since every real example given was one level.
   parentInteractionId String?
-  parent               Interaction?  @relation("InteractionBranches", fields: [parentInteractionId], references: [id], onDelete: Cascade)
-  children             Interaction[] @relation("InteractionBranches")
+  parent              Interaction?  @relation("InteractionBranches", fields: [parentInteractionId], references: [id], onDelete: Cascade)
+  children            Interaction[] @relation("InteractionBranches")
 
   @@index([contactId])
   @@index([connectionId])

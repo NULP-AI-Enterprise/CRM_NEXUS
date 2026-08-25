@@ -14,10 +14,13 @@ const API_KEY_SUMMARY_SELECT = {
 
 export type ApiKeySummary = Awaited<ReturnType<typeof listApiKeys>>[number];
 
-/** Never selects `keyHash` — nothing beyond auth resolution needs it in memory. */
+/** Never selects `keyHash` — nothing beyond auth resolution needs it in memory.
+ * Excludes OAuth-minted rows (`oauthClientId` set) — those rotate roughly
+ * hourly and would otherwise flood this list; they surface instead in the
+ * OAuth clients section (src/lib/data/oauth-clients.ts). */
 export function listApiKeys(userId: string) {
   return prisma.apiKey.findMany({
-    where: { userId },
+    where: { userId, oauthClientId: null },
     orderBy: { createdAt: "desc" },
     select: API_KEY_SUMMARY_SELECT,
   });
