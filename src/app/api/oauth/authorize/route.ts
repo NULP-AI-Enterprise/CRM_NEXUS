@@ -8,6 +8,9 @@ import type { ApiKeyScope } from "@/generated/prisma/enums";
 
 const CODE_TTL_MS = 10 * 60 * 1000;
 
+// RFC 6749 §5.1: responses carrying a code/credential MUST NOT be cached.
+const NO_STORE_HEADERS = { "Cache-Control": "no-store", Pragma: "no-cache" };
+
 /** Handles the Allow/Deny submission from the consent screen
  * (src/app/(oauth)/authorize/page.tsx). Re-validates every field from
  * scratch — a form POST here is untrusted input regardless of what the GET
@@ -41,7 +44,7 @@ export async function POST(request: Request) {
     // callback expects a plain GET with code/state in the query string. A
     // 307 preserves the original method, so the client's callback would
     // receive a POST instead and reject it ("Method Not Allowed").
-    return NextResponse.redirect(url, 303);
+    return NextResponse.redirect(url, { status: 303, headers: NO_STORE_HEADERS });
   };
 
   if (
@@ -85,5 +88,5 @@ export async function POST(request: Request) {
   const url = new URL(redirectUri);
   url.searchParams.set("code", code);
   if (typeof state === "string" && state) url.searchParams.set("state", state);
-  return NextResponse.redirect(url, 303);
+  return NextResponse.redirect(url, { status: 303, headers: NO_STORE_HEADERS });
 }

@@ -10,18 +10,26 @@ import type { OAuthClientModel } from "@/generated/prisma/models";
 const ACCESS_TOKEN_TTL_MS = 60 * 60 * 1000;
 const REFRESH_TOKEN_TTL_MS = 90 * 24 * 60 * 60 * 1000;
 
+// RFC 6749 §5.1: responses containing tokens/credentials MUST carry these —
+// also closes off any chance of an intermediary (this deploys behind
+// Cloudflare) caching a token response.
+const NO_STORE_HEADERS = { "Cache-Control": "no-store", Pragma: "no-cache" };
+
 function oauthError(error: string, status = 400) {
-  return NextResponse.json({ error }, { status });
+  return NextResponse.json({ error }, { status, headers: NO_STORE_HEADERS });
 }
 
 function tokenResponse(rawAccessToken: string, refreshToken: string, scope: ApiKeyScope) {
-  return NextResponse.json({
-    access_token: rawAccessToken,
-    token_type: "Bearer",
-    expires_in: ACCESS_TOKEN_TTL_MS / 1000,
-    refresh_token: refreshToken,
-    scope,
-  });
+  return NextResponse.json(
+    {
+      access_token: rawAccessToken,
+      token_type: "Bearer",
+      expires_in: ACCESS_TOKEN_TTL_MS / 1000,
+      refresh_token: refreshToken,
+      scope,
+    },
+    { headers: NO_STORE_HEADERS },
+  );
 }
 
 /** Reads client_id/client_secret from the `Authorization: Basic` header when
@@ -64,7 +72,15 @@ export async function POST(request: Request) {
 
   const { clientId, clientSecret } = extractClientCredentials(request, form);
   const client = await authenticateClient(clientId, clientSecret);
-  if (!client) return oauthError("invalid_client", 401);
+  if (!client) {
+    // RFC 6749 §5.2: a client that authenticated via the Authorization
+    // header MUST get WWW-Authenticate back on failure, matching that scheme.
+    const usedBasicAuth = request.headers.get("authorization")?.startsWith("Basic ");
+    return NextResponse.json(
+      { error: "invalid_client" },
+      { status: 401, headers: usedBasicAuth ? { ...NO_STORE_HEADERS, "WWW-Authenticate": "Basic" } : NO_STORE_HEADERS },
+    );
+  }
 
   if (grantType === "authorization_code") {
     const code = form.get("code");
