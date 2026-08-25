@@ -36,7 +36,12 @@ export async function POST(request: Request) {
     const url = new URL(redirectUri);
     url.searchParams.set("error", error);
     if (typeof state === "string" && state) url.searchParams.set("state", state);
-    return NextResponse.redirect(url);
+    // 303 (not the 307 NextResponse.redirect defaults to) — this handler is
+    // a POST (the consent form submission), and an OAuth redirect_uri
+    // callback expects a plain GET with code/state in the query string. A
+    // 307 preserves the original method, so the client's callback would
+    // receive a POST instead and reject it ("Method Not Allowed").
+    return NextResponse.redirect(url, 303);
   };
 
   if (
@@ -80,5 +85,5 @@ export async function POST(request: Request) {
   const url = new URL(redirectUri);
   url.searchParams.set("code", code);
   if (typeof state === "string" && state) url.searchParams.set("state", state);
-  return NextResponse.redirect(url);
+  return NextResponse.redirect(url, 303);
 }
