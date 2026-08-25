@@ -24,6 +24,29 @@ function tokenResponse(rawAccessToken: string, refreshToken: string, scope: ApiK
   });
 }
 
+/** Reads client_id/client_secret from the `Authorization: Basic` header when
+ * present (client_secret_basic — the RFC 6749 default many OAuth clients use
+ * regardless of what token_endpoint_auth_methods_supported advertises),
+ * falling back to the form body (client_secret_post, also advertised). */
+function extractClientCredentials(request: Request, form: FormData): { clientId: unknown; clientSecret: unknown } {
+  const authHeader = request.headers.get("authorization");
+  if (authHeader?.startsWith("Basic ")) {
+    try {
+      const decoded = Buffer.from(authHeader.slice("Basic ".length), "base64").toString("utf-8");
+      const sepIndex = decoded.indexOf(":");
+      if (sepIndex !== -1) {
+        return {
+          clientId: decodeURIComponent(decoded.slice(0, sepIndex)),
+          clientSecret: decodeURIComponent(decoded.slice(sepIndex + 1)),
+        };
+      }
+    } catch {
+      // malformed header — fall through to form-body credentials
+    }
+  }
+  return { clientId: form.get("client_id"), clientSecret: form.get("client_secret") };
+}
+
 async function authenticateClient(clientId: unknown, clientSecret: unknown): Promise<OAuthClientModel | null> {
   if (typeof clientId !== "string" || typeof clientSecret !== "string") return null;
   const client = await prisma.oAuthClient.findUnique({ where: { clientId } });
@@ -39,7 +62,8 @@ export async function POST(request: Request) {
   const form = await request.formData();
   const grantType = form.get("grant_type");
 
-  const client = await authenticateClient(form.get("client_id"), form.get("client_secret"));
+  const { clientId, clientSecret } = extractClientCredentials(request, form);
+  const client = await authenticateClient(clientId, clientSecret);
   if (!client) return oauthError("invalid_client", 401);
 
   if (grantType === "authorization_code") {
