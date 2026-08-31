@@ -79,3 +79,14 @@ export async function listContacts(userId: string) {
   });
 }
 
+/** Bare id/name list for "add an existing person" pickers — a company or
+ * community page needs to know who's addable without the full profile each
+ * `listContacts` row carries. */
+export async function listContactsBasic(userId: string) {
+  return prisma.contact.findMany({
+    where: { userId },
+    select: { id: true, fullName: true, companyId: true },
+    orderBy: { fullName: "asc" },
+  });
+}
+

@@ -29,7 +29,14 @@ export function ActivityPageView({ followUps }: { followUps: TimelineEvent[] }) 
             const href =
               event.entity.kind === "contact"
                 ? `/contacts/${event.entity.contact.id}`
-                : `/contacts/${event.entity.fromContact.id}`;
+                : event.entity.kind === "connection"
+                  ? `/contacts/${event.entity.fromContact.id}`
+                  : event.entity.kind === "company"
+                    ? "/companies"
+                    : "/communities";
+            // The workflow diagram is a Contact/ContactConnection BFS — a
+            // company/community event has no cluster to open there.
+            const canOpenHistory = event.entity.kind === "contact" || event.entity.kind === "connection";
 
             return (
               <div
@@ -55,13 +62,15 @@ export function ActivityPageView({ followUps }: { followUps: TimelineEvent[] }) 
                     <span className="font-medium">{t("activity.fromNote")}</span> {event.rawText}
                   </p>
 
-                  <button
-                    onClick={() => setWorkflow({ entityKey: entityKey(event.entity), eventId: event.id })}
-                    className="mt-1.5 flex items-center gap-1 text-[11px] font-medium text-amber-800 hover:underline"
-                  >
-                    <GitBranch className="size-3" />
-                    {t("activity.openInHistory")}
-                  </button>
+                  {canOpenHistory && (
+                    <button
+                      onClick={() => setWorkflow({ entityKey: entityKey(event.entity), eventId: event.id })}
+                      className="mt-1.5 flex items-center gap-1 text-[11px] font-medium text-amber-800 hover:underline"
+                    >
+                      <GitBranch className="size-3" />
+                      {t("activity.openInHistory")}
+                    </button>
+                  )}
                 </div>
               </div>
             );

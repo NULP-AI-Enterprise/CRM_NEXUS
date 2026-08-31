@@ -15,14 +15,33 @@ export interface CommunityGraphEdge {
   relationship: string | null;
 }
 
+export interface CommunityOwnInteraction {
+  id: string;
+  rawText: string;
+  type: string;
+  createdAt: string;
+}
+
 export interface CommunityGraphData {
   id: string;
   name: string;
   description: string | null;
+  linkedin: string | null;
+  phone: string | null;
+  city: string | null;
+  country: string | null;
+  usefulnessScore: number | null;
+  needs: string | null;
+  valuePotential: string | null;
+  fullSummary: string | null;
   members: CommunityGraphMember[];
   edges: CommunityGraphEdge[];
   totalInteractions: number;
   mostActiveMemberId: string | null;
+  /** Events logged against the community itself, not any one member —
+   * distinct from totalInteractions, which aggregates member-contacts' own
+   * logs. */
+  ownInteractions: CommunityOwnInteraction[];
 }
 
 /** Everything a community "detail" panel needs beyond the flat member grid
@@ -38,8 +57,38 @@ export async function getCommunityGraphData(userId: string, communityId: string)
   if (!community) return null;
 
   const memberIds = community.contacts.map((c) => c.id);
+
+  const ownInteractionRows = await prisma.interaction.findMany({
+    where: { communityId: community.id },
+    select: { id: true, rawText: true, type: true, createdAt: true },
+    orderBy: { createdAt: "desc" },
+  });
+  const ownInteractions: CommunityOwnInteraction[] = ownInteractionRows.map((i) => ({
+    id: i.id,
+    rawText: i.rawText,
+    type: i.type,
+    createdAt: i.createdAt.toISOString(),
+  }));
+
   if (memberIds.length === 0) {
-    return { id: community.id, name: community.name, description: community.description, members: [], edges: [], totalInteractions: 0, mostActiveMemberId: null };
+    return {
+      id: community.id,
+      name: community.name,
+      description: community.description,
+      linkedin: community.linkedin,
+      phone: community.phone,
+      city: community.city,
+      country: community.country,
+      usefulnessScore: community.usefulnessScore,
+      needs: community.needs,
+      valuePotential: community.valuePotential,
+      fullSummary: community.fullSummary,
+      members: [],
+      edges: [],
+      totalInteractions: 0,
+      mostActiveMemberId: null,
+      ownInteractions,
+    };
   }
 
   const [connections, interactionCounts] = await Promise.all([
@@ -79,10 +128,19 @@ export async function getCommunityGraphData(userId: string, communityId: string)
     id: community.id,
     name: community.name,
     description: community.description,
+    linkedin: community.linkedin,
+    phone: community.phone,
+    city: community.city,
+    country: community.country,
+    usefulnessScore: community.usefulnessScore,
+    needs: community.needs,
+    valuePotential: community.valuePotential,
+    fullSummary: community.fullSummary,
     members,
     edges: connections.map((c) => ({ aId: c.fromContactId, bId: c.toContactId, relationship: c.relationship })),
     totalInteractions: interactionCounts.length,
     mostActiveMemberId,
+    ownInteractions,
   };
 }
 

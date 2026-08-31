@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { History, Plus } from "lucide-react";
 
 import { auth } from "@/lib/auth";
 import { getContactDetail } from "@/lib/data/contacts";
@@ -11,9 +10,8 @@ import { getServerTranslation } from "@/lib/i18n/server";
 import { ContactHeader } from "@/components/contacts/contact-header";
 import { ContactInsightsPanel } from "@/components/contacts/contact-insights-panel";
 import { ContactProfileBody } from "@/components/contacts/contact-profile-body";
-import { AddNoteForm } from "@/components/contacts/add-note-form";
-import { TimelineView } from "@/components/timeline/timeline-view";
-import { entityKey, type TimelineEvent } from "@/lib/timeline-entity";
+import { ContactInteractionGraph } from "@/components/contacts/contact-interaction-graph";
+import { entityKey } from "@/lib/timeline-entity";
 import { ContactLocalGraph } from "@/components/graph/contact-local-graph";
 import type { ContactCategory } from "@/generated/prisma/enums";
 
@@ -77,16 +75,6 @@ export default async function ContactPage({ params }: ContactPageProps) {
   }));
 
   const contactEntity = { id: contact.id, fullName: contact.fullName, category: contact.category };
-  const timelineEvents: TimelineEvent[] = contact.interactions.map((i) => ({
-    id: i.id,
-    type: i.type,
-    rawText: i.rawText,
-    followUp: i.followUp,
-    followUpDate: i.followUpDate?.toISOString() ?? null,
-    createdAt: i.createdAt.toISOString(),
-    parentInteractionId: i.parentInteractionId,
-    entity: { kind: "contact", contact: contactEntity },
-  }));
 
   return (
     <div className="flex flex-col gap-5 pb-12">
@@ -102,37 +90,21 @@ export default async function ContactPage({ params }: ContactPageProps) {
       {/* One unified card: tinted identity header, then a two-column body —
           Fields/Summary/Interactions on the left, Relationships on the right. */}
       <div className="rounded-[18px] border border-border bg-card overflow-hidden">
-        <ContactHeader contact={contact} companies={companies} communities={communities} />
+        <ContactHeader contact={contact} />
 
         <div className="grid lg:grid-cols-[1.5fr_1fr]">
           <div className="flex flex-col gap-5 border-b border-border p-5 lg:border-b-0 lg:border-r">
-            <ContactProfileBody contact={contact} />
-
-            <div className="space-y-2.5">
-              <div className="flex items-center gap-1.5 text-xs font-semibold text-foreground uppercase tracking-wider">
-                <Plus className="size-3 text-muted-foreground" />
-                {t("addNote.newNoteTitle")}
-              </div>
-              <AddNoteForm contactId={contact.id} />
-            </div>
-
-            <div className="space-y-3">
-              <div className="flex items-center gap-1.5 text-xs font-semibold text-foreground uppercase tracking-wider">
-                <History className="size-3.5 text-muted-foreground" />
-                {t("timeline.title")}
-              </div>
-              <TimelineView
-                events={timelineEvents}
-                onlyEntityKey={entityKey({ kind: "contact", contact: contactEntity })}
-                showRangeControl={false}
-              />
-            </div>
+            <ContactProfileBody contact={contact} companies={companies} communities={communities} />
           </div>
 
           <div className="p-5">
             <ContactInsightsPanel contact={contact} />
           </div>
         </div>
+      </div>
+
+      <div className="rounded-[18px] border border-border bg-card p-5">
+        <ContactInteractionGraph entityKey={entityKey({ kind: "contact", contact: contactEntity })} />
       </div>
 
       <div className="grid gap-5 lg:grid-cols-2">

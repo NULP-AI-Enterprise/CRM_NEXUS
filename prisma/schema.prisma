@@ -174,13 +174,24 @@ model Community {
   id          String   @id @default(cuid())
   name        String
   description String?  @db.Text
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  linkedin    String?
+  phone       String?
+  city        String?
+  country     String?
+
+  usefulnessScore Int?    @db.SmallInt
+  needs           String? @db.Text
+  valuePotential  String? @db.Text
+  fullSummary     String? @db.Text
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   userId String
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  contacts Contact[] @relation("ContactCommunities")
+  contacts     Contact[]     @relation("ContactCommunities")
+  interactions Interaction[]
 
   @@unique([userId, name])
   @@index([userId])
@@ -192,13 +203,24 @@ model Company {
   name        String
   industry    String?
   description String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  linkedin    String?
+  phone       String?
+  city        String?
+  country     String?
+
+  usefulnessScore Int?    @db.SmallInt
+  needs           String? @db.Text
+  valuePotential  String? @db.Text
+  fullSummary     String? @db.Text
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   userId String
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  contacts Contact[]
+  contacts     Contact[]
+  interactions Interaction[]
 
   @@unique([userId, name])
   @@index([userId])
@@ -287,10 +309,12 @@ enum InteractionType {
   MEMO
 }
 
-/// A single logged, dated event belonging to either a Contact (an interaction
-/// the user had directly) or a ContactConnection (an interaction the user
-/// observed/heard about between two of their own contacts). Exactly one of
-/// contactId/connectionId is set — enforced in application code, not the DB.
+/// A single logged, dated event belonging to exactly one of a Contact (an
+/// interaction the user had directly), a ContactConnection (an interaction
+/// the user observed/heard about between two of their own contacts), a
+/// Company, or a Community (an event logged against the org itself, not any
+/// one person). Exactly one of contactId/connectionId/companyId/communityId
+/// is set — enforced in application code, not the DB.
 model Interaction {
   id           String          @id @default(cuid())
   type         InteractionType @default(MEMO)
@@ -308,6 +332,10 @@ model Interaction {
   contact      Contact?           @relation(fields: [contactId], references: [id], onDelete: Cascade)
   connectionId String?
   connection   ContactConnection? @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+  companyId    String?
+  company      Company?           @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  communityId  String?
+  community    Community?         @relation(fields: [communityId], references: [id], onDelete: Cascade)
 
   /// A branch off an existing event (the user's own v1 -> hotfix -> v2
   /// language) — null means this interaction lives on the entity's/cluster's
@@ -320,6 +348,8 @@ model Interaction {
 
   @@index([contactId])
   @@index([connectionId])
+  @@index([companyId])
+  @@index([communityId])
   @@index([createdAt])
   @@index([parentInteractionId])
 }

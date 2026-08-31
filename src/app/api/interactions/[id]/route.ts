@@ -5,6 +5,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { InteractionType } from "@/generated/prisma/enums";
 import { checkRateLimit, getClientIp, rateLimitedResponse } from "@/lib/rate-limit";
+import { interactionOwnerConditions } from "@/lib/data/interaction-ownership";
 
 const updateInteractionSchema = z.object({
   rawText: z.string().trim().min(1).max(8000).optional(),
@@ -18,14 +19,13 @@ const updateInteractionSchema = z.object({
 
 type RouteContext = { params: Promise<{ id: string }> };
 
-/** An Interaction has no userId of its own — ownership is via whichever of
- * its two optional parents (Contact or ContactConnection) is set. Every
- * write here re-verifies this, same pattern as the MCP write tools. */
+/** Every write here re-verifies ownership, same pattern as the MCP write
+ * tools. */
 async function findOwnedInteraction(id: string, userId: string) {
   return prisma.interaction.findFirst({
     where: {
       id,
-      OR: [{ contact: { userId } }, { connection: { userId } }],
+      OR: interactionOwnerConditions(userId),
     },
   });
 }
@@ -45,7 +45,7 @@ async function wouldCreateCycle(childId: string, candidateParentId: string, user
 
   while (cursor) {
     const node: { parentInteractionId: string | null } | null = await prisma.interaction.findFirst({
-      where: { id: cursor, OR: [{ contact: { userId } }, { connection: { userId } }] },
+      where: { id: cursor, OR: interactionOwnerConditions(userId) },
       select: { parentInteractionId: true },
     });
     const next: string | null = node?.parentInteractionId ?? null;

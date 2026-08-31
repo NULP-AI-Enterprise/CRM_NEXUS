@@ -15,15 +15,33 @@ export interface CompanyGraphEdge {
   relationship: string | null;
 }
 
+export interface CompanyOwnInteraction {
+  id: string;
+  rawText: string;
+  type: string;
+  createdAt: string;
+}
+
 export interface CompanyGraphData {
   id: string;
   name: string;
   industry: string | null;
   description: string | null;
+  linkedin: string | null;
+  phone: string | null;
+  city: string | null;
+  country: string | null;
+  usefulnessScore: number | null;
+  needs: string | null;
+  valuePotential: string | null;
+  fullSummary: string | null;
   members: CompanyGraphMember[];
   edges: CompanyGraphEdge[];
   totalInteractions: number;
   mostActiveMemberId: string | null;
+  /** Events logged against the company itself, not any one member — distinct
+   * from totalInteractions, which aggregates member-contacts' own logs. */
+  ownInteractions: CompanyOwnInteraction[];
 }
 
 /** Same shape as the community graph data — how a company's own people relate
@@ -37,16 +55,38 @@ export async function getCompanyGraphData(userId: string, companyId: string): Pr
   if (!company) return null;
 
   const memberIds = company.contacts.map((c) => c.id);
+
+  const ownInteractionRows = await prisma.interaction.findMany({
+    where: { companyId: company.id },
+    select: { id: true, rawText: true, type: true, createdAt: true },
+    orderBy: { createdAt: "desc" },
+  });
+  const ownInteractions: CompanyOwnInteraction[] = ownInteractionRows.map((i) => ({
+    id: i.id,
+    rawText: i.rawText,
+    type: i.type,
+    createdAt: i.createdAt.toISOString(),
+  }));
+
   if (memberIds.length === 0) {
     return {
       id: company.id,
       name: company.name,
       industry: company.industry,
       description: company.description,
+      linkedin: company.linkedin,
+      phone: company.phone,
+      city: company.city,
+      country: company.country,
+      usefulnessScore: company.usefulnessScore,
+      needs: company.needs,
+      valuePotential: company.valuePotential,
+      fullSummary: company.fullSummary,
       members: [],
       edges: [],
       totalInteractions: 0,
       mostActiveMemberId: null,
+      ownInteractions,
     };
   }
 
@@ -88,10 +128,19 @@ export async function getCompanyGraphData(userId: string, companyId: string): Pr
     name: company.name,
     industry: company.industry,
     description: company.description,
+    linkedin: company.linkedin,
+    phone: company.phone,
+    city: company.city,
+    country: company.country,
+    usefulnessScore: company.usefulnessScore,
+    needs: company.needs,
+    valuePotential: company.valuePotential,
+    fullSummary: company.fullSummary,
     members,
     edges: connections.map((c) => ({ aId: c.fromContactId, bId: c.toContactId, relationship: c.relationship })),
     totalInteractions: interactionCounts.length,
     mostActiveMemberId,
+    ownInteractions,
   };
 }
 

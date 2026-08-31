@@ -42,6 +42,14 @@ export async function POST(request: Request) {
       name: parsed.data.name,
       industry: parsed.data.industry || null,
       description: parsed.data.description || null,
+      linkedin: parsed.data.linkedin || null,
+      phone: parsed.data.phone || null,
+      city: parsed.data.city || null,
+      country: parsed.data.country || null,
+      usefulnessScore: parsed.data.usefulnessScore ?? null,
+      needs: parsed.data.needs || null,
+      valuePotential: parsed.data.valuePotential || null,
+      fullSummary: parsed.data.fullSummary || null,
     },
   });
 

@@ -15,7 +15,7 @@ export default async function CompaniesPage() {
     redirect("/login");
   }
 
-  const { companies, unassignedContacts } = await getCompaniesWithContacts(session.user.id);
+  const { companies } = await getCompaniesWithContacts(session.user.id);
 
-  return <CompaniesPageView companies={companies} unassignedContacts={unassignedContacts} />;
+  return <CompaniesPageView companies={companies} />;
 }

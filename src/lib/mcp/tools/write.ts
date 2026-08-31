@@ -7,6 +7,7 @@ import { sanitizeContact } from "@/lib/mcp/sanitize";
 import { contactFieldsShape, updateField } from "@/lib/validation/contact";
 import { companyFieldsShape } from "@/lib/validation/company";
 import { communityFieldsShape } from "@/lib/validation/community";
+import { interactionOwnerConditions } from "@/lib/data/interaction-ownership";
 import type { McpAuthContext } from "@/lib/mcp/auth";
 
 function jsonResult(data: unknown) {
@@ -211,6 +212,21 @@ export function registerWriteTools(server: McpServer, context: McpAuthContext) {
 
   // ---- companies ----
 
+  const orgSelect = {
+    id: true,
+    name: true,
+    industry: true,
+    description: true,
+    linkedin: true,
+    phone: true,
+    city: true,
+    country: true,
+    usefulnessScore: true,
+    needs: true,
+    valuePotential: true,
+    fullSummary: true,
+  } as const;
+
   server.registerTool(
     "create_company",
     {
@@ -218,13 +234,26 @@ export function registerWriteTools(server: McpServer, context: McpAuthContext) {
       description: "Creates a new company.",
       inputSchema: companyFieldsShape,
     },
-    async ({ name, industry, description }) => {
+    async ({ name, industry, description, linkedin, phone, city, country, usefulnessScore, needs, valuePotential, fullSummary }) => {
       const existing = await prisma.company.findFirst({ where: { userId, name: { equals: name, mode: "insensitive" } } });
       if (existing) return errorResult("A company with this name already exists.");
 
       const company = await prisma.company.create({
-        data: { userId, name, industry: industry || null, description: description || null },
-        select: { id: true, name: true, industry: true, description: true },
+        data: {
+          userId,
+          name,
+          industry: industry || null,
+          description: description || null,
+          linkedin: linkedin || null,
+          phone: phone || null,
+          city: city || null,
+          country: country || null,
+          usefulnessScore: usefulnessScore ?? null,
+          needs: needs || null,
+          valuePotential: valuePotential || null,
+          fullSummary: fullSummary || null,
+        },
+        select: orgSelect,
       });
       return jsonResult({ company });
     },
@@ -238,7 +267,7 @@ export function registerWriteTools(server: McpServer, context: McpAuthContext) {
         "Updates an existing company. Only fields you include are changed — omitted fields keep their current value. Renaming also updates the cached company name on its contacts.",
       inputSchema: { companyId: z.string(), ...companyFieldsShape },
     },
-    async ({ companyId, name, industry, description }) => {
+    async ({ companyId, name, industry, description, linkedin, phone, city, country, usefulnessScore, needs, valuePotential, fullSummary }) => {
       const existing = await prisma.company.findFirst({ where: { id: companyId, userId } });
       if (!existing) return errorResult("Company not found.");
 
@@ -249,8 +278,20 @@ export function registerWriteTools(server: McpServer, context: McpAuthContext) {
 
       const company = await prisma.company.update({
         where: { id: companyId },
-        data: { name, industry: updateField(industry), description: updateField(description) },
-        select: { id: true, name: true, industry: true, description: true },
+        data: {
+          name,
+          industry: updateField(industry),
+          description: updateField(description),
+          linkedin: updateField(linkedin),
+          phone: updateField(phone),
+          city: updateField(city),
+          country: updateField(country),
+          usefulnessScore: updateField(usefulnessScore),
+          needs: updateField(needs),
+          valuePotential: updateField(valuePotential),
+          fullSummary: updateField(fullSummary),
+        },
+        select: orgSelect,
       });
       await prisma.contact.updateMany({ where: { companyId }, data: { companyName: company.name } });
 
@@ -275,6 +316,20 @@ export function registerWriteTools(server: McpServer, context: McpAuthContext) {
 
   // ---- communities ----
 
+  const communitySelect = {
+    id: true,
+    name: true,
+    description: true,
+    linkedin: true,
+    phone: true,
+    city: true,
+    country: true,
+    usefulnessScore: true,
+    needs: true,
+    valuePotential: true,
+    fullSummary: true,
+  } as const;
+
   server.registerTool(
     "create_community",
     {
@@ -282,13 +337,25 @@ export function registerWriteTools(server: McpServer, context: McpAuthContext) {
       description: "Creates a new community (meetup, alumni network, etc.).",
       inputSchema: communityFieldsShape,
     },
-    async ({ name, description }) => {
+    async ({ name, description, linkedin, phone, city, country, usefulnessScore, needs, valuePotential, fullSummary }) => {
       const existing = await prisma.community.findFirst({ where: { userId, name: { equals: name, mode: "insensitive" } } });
       if (existing) return errorResult("A community with this name already exists.");
 
       const community = await prisma.community.create({
-        data: { userId, name, description: description || null },
-        select: { id: true, name: true, description: true },
+        data: {
+          userId,
+          name,
+          description: description || null,
+          linkedin: linkedin || null,
+          phone: phone || null,
+          city: city || null,
+          country: country || null,
+          usefulnessScore: usefulnessScore ?? null,
+          needs: needs || null,
+          valuePotential: valuePotential || null,
+          fullSummary: fullSummary || null,
+        },
+        select: communitySelect,
       });
       return jsonResult({ community });
     },
@@ -302,7 +369,7 @@ export function registerWriteTools(server: McpServer, context: McpAuthContext) {
         "Updates an existing community. Only fields you include are changed — omitted fields keep their current value.",
       inputSchema: { communityId: z.string(), ...communityFieldsShape },
     },
-    async ({ communityId, name, description }) => {
+    async ({ communityId, name, description, linkedin, phone, city, country, usefulnessScore, needs, valuePotential, fullSummary }) => {
       const existing = await prisma.community.findFirst({ where: { id: communityId, userId } });
       if (!existing) return errorResult("Community not found.");
 
@@ -313,8 +380,19 @@ export function registerWriteTools(server: McpServer, context: McpAuthContext) {
 
       const community = await prisma.community.update({
         where: { id: communityId },
-        data: { name, description: updateField(description) },
-        select: { id: true, name: true, description: true },
+        data: {
+          name,
+          description: updateField(description),
+          linkedin: updateField(linkedin),
+          phone: updateField(phone),
+          city: updateField(city),
+          country: updateField(country),
+          usefulnessScore: updateField(usefulnessScore),
+          needs: updateField(needs),
+          valuePotential: updateField(valuePotential),
+          fullSummary: updateField(fullSummary),
+        },
+        select: communitySelect,
       });
       return jsonResult({ community });
     },
@@ -416,7 +494,7 @@ export function registerWriteTools(server: McpServer, context: McpAuthContext) {
       if (!connection) return errorResult("Connection not found.");
 
       const validParentId = parentInteractionId
-        ? (await prisma.interaction.findFirst({ where: { id: parentInteractionId, OR: [{ contact: { userId } }, { connection: { userId } }] }, select: { id: true } }))?.id ?? null
+        ? (await prisma.interaction.findFirst({ where: { id: parentInteractionId, OR: interactionOwnerConditions(userId) }, select: { id: true } }))?.id ?? null
         : null;
 
       const interaction = await prisma.interaction.create({
@@ -468,12 +546,114 @@ export function registerWriteTools(server: McpServer, context: McpAuthContext) {
       if (!contact) return errorResult("Contact not found.");
 
       const validParentId = parentInteractionId
-        ? (await prisma.interaction.findFirst({ where: { id: parentInteractionId, OR: [{ contact: { userId } }, { connection: { userId } }] }, select: { id: true } }))?.id ?? null
+        ? (await prisma.interaction.findFirst({ where: { id: parentInteractionId, OR: interactionOwnerConditions(userId) }, select: { id: true } }))?.id ?? null
         : null;
 
       const interaction = await prisma.interaction.create({
         data: {
           contactId: contact.id,
+          type: type ?? "MEMO",
+          rawText,
+          followUp: followUp || null,
+          followUpDate: followUpDate ? new Date(followUpDate) : null,
+          parentInteractionId: validParentId,
+        },
+      });
+
+      return jsonResult({
+        interaction: {
+          id: interaction.id,
+          type: interaction.type,
+          rawText: redact ? "[redacted]" : interaction.rawText,
+          followUp: interaction.followUp,
+          followUpDate: interaction.followUpDate?.toISOString() ?? null,
+          createdAt: interaction.createdAt.toISOString(),
+          parentInteractionId: interaction.parentInteractionId,
+        },
+      });
+    },
+  );
+
+  server.registerTool(
+    "log_company_interaction",
+    {
+      title: "Log company interaction",
+      description:
+        "Logs a structured interaction against one of the user's own companies (not any one person there) without running the AI extraction pipeline.",
+      inputSchema: {
+        companyId: z.string(),
+        rawText: z.string().trim().min(1).max(8000),
+        type: z.nativeEnum(InteractionType).optional().describe("Defaults to MEMO."),
+        followUp: z.string().trim().max(2000).nullish(),
+        followUpDate: z.string().date().nullish().describe("YYYY-MM-DD"),
+        parentInteractionId: z
+          .string()
+          .optional()
+          .describe("Branch this off an existing interaction of the user's — any of their contacts, connections, companies or communities — instead of the main line."),
+      },
+    },
+    async ({ companyId, rawText, type, followUp, followUpDate, parentInteractionId }) => {
+      const company = await prisma.company.findFirst({ where: { id: companyId, userId } });
+      if (!company) return errorResult("Company not found.");
+
+      const validParentId = parentInteractionId
+        ? (await prisma.interaction.findFirst({ where: { id: parentInteractionId, OR: interactionOwnerConditions(userId) }, select: { id: true } }))?.id ?? null
+        : null;
+
+      const interaction = await prisma.interaction.create({
+        data: {
+          companyId: company.id,
+          type: type ?? "MEMO",
+          rawText,
+          followUp: followUp || null,
+          followUpDate: followUpDate ? new Date(followUpDate) : null,
+          parentInteractionId: validParentId,
+        },
+      });
+
+      return jsonResult({
+        interaction: {
+          id: interaction.id,
+          type: interaction.type,
+          rawText: redact ? "[redacted]" : interaction.rawText,
+          followUp: interaction.followUp,
+          followUpDate: interaction.followUpDate?.toISOString() ?? null,
+          createdAt: interaction.createdAt.toISOString(),
+          parentInteractionId: interaction.parentInteractionId,
+        },
+      });
+    },
+  );
+
+  server.registerTool(
+    "log_community_interaction",
+    {
+      title: "Log community interaction",
+      description:
+        "Logs a structured interaction against one of the user's own communities (not any one member) without running the AI extraction pipeline.",
+      inputSchema: {
+        communityId: z.string(),
+        rawText: z.string().trim().min(1).max(8000),
+        type: z.nativeEnum(InteractionType).optional().describe("Defaults to MEMO."),
+        followUp: z.string().trim().max(2000).nullish(),
+        followUpDate: z.string().date().nullish().describe("YYYY-MM-DD"),
+        parentInteractionId: z
+          .string()
+          .optional()
+          .describe("Branch this off an existing interaction of the user's — any of their contacts, connections, companies or communities — instead of the main line."),
+      },
+    },
+    async ({ communityId, rawText, type, followUp, followUpDate, parentInteractionId }) => {
+      const community = await prisma.community.findFirst({ where: { id: communityId, userId } });
+      if (!community) return errorResult("Community not found.");
+
+      const validParentId = parentInteractionId
+        ? (await prisma.interaction.findFirst({ where: { id: parentInteractionId, OR: interactionOwnerConditions(userId) }, select: { id: true } }))?.id ?? null
+        : null;
+
+      const interaction = await prisma.interaction.create({
+        data: {
+          communityId: community.id,
           type: type ?? "MEMO",
           rawText,
           followUp: followUp || null,
@@ -517,13 +697,13 @@ export function registerWriteTools(server: McpServer, context: McpAuthContext) {
     },
     async ({ interactionId, rawText, followUp, followUpDate, parentInteractionId }) => {
       const existing = await prisma.interaction.findFirst({
-        where: { id: interactionId, OR: [{ contact: { userId } }, { connection: { userId } }] },
+        where: { id: interactionId, OR: interactionOwnerConditions(userId) },
       });
       if (!existing) return errorResult("Interaction not found.");
 
       if (parentInteractionId) {
         const parent = await prisma.interaction.findFirst({
-          where: { id: parentInteractionId, OR: [{ contact: { userId } }, { connection: { userId } }] },
+          where: { id: parentInteractionId, OR: interactionOwnerConditions(userId) },
           select: { id: true },
         });
         if (!parent) return errorResult("Parent interaction not found.");
@@ -535,7 +715,7 @@ export function registerWriteTools(server: McpServer, context: McpAuthContext) {
         let cursor: string | null = parentInteractionId;
         while (cursor) {
           const node: { parentInteractionId: string | null } | null = await prisma.interaction.findFirst({
-            where: { id: cursor, OR: [{ contact: { userId } }, { connection: { userId } }] },
+            where: { id: cursor, OR: interactionOwnerConditions(userId) },
             select: { parentInteractionId: true },
           });
           const next: string | null = node?.parentInteractionId ?? null;
@@ -578,7 +758,7 @@ export function registerWriteTools(server: McpServer, context: McpAuthContext) {
     },
     async ({ interactionId }) => {
       const existing = await prisma.interaction.findFirst({
-        where: { id: interactionId, OR: [{ contact: { userId } }, { connection: { userId } }] },
+        where: { id: interactionId, OR: interactionOwnerConditions(userId) },
       });
       if (!existing) return errorResult("Interaction not found.");
 

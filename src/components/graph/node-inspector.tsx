@@ -111,9 +111,10 @@ export function NodeInspector({ node, allNodes, links, onClose, onRefreshGraph, 
 
   // Fetch this contact's own logged events for the Interactions section — the
   // graph-driven entry point into the big workflow diagram: click a node,
-  // then one of its events. Company/community nodes have no direct
-  // interaction log of their own (Interaction only ever attaches to a
-  // Contact or a ContactConnection), so this stays contact-only. Loading
+  // then one of its events. Company/community nodes can have their own
+  // directly-attached interactions too now, but this popover's Interactions
+  // section is scoped to contacts only — their own dedicated page (with
+  // OrgFieldsSection + HistoryGraphView) is the place to see those. Loading
   // state is derived (`loadedContactId !== contactId`) rather than a
   // separate flag toggled synchronously in the effect body.
   useEffect(() => {
@@ -159,12 +160,11 @@ export function NodeInspector({ node, allNodes, links, onClose, onRefreshGraph, 
 
     startNoteTransition(async () => {
       try {
-        const res = await fetch("/api/process-interaction", {
+        const res = await fetch(`/api/contacts/${contactNode.id}/interactions`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             rawText: quickNote.trim(),
-            contactId: contactNode.id,
             type: "MEMO",
             parentInteractionId: noteParentId,
           }),

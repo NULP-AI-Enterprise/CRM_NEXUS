@@ -22,10 +22,9 @@ type CompanyWithContacts = CompanyModel & { contacts: ContactModel[] };
 
 interface CompaniesPageViewProps {
   companies: CompanyWithContacts[];
-  unassignedContacts: ContactModel[];
 }
 
-export function CompaniesPageView({ companies, unassignedContacts }: CompaniesPageViewProps) {
+export function CompaniesPageView({ companies }: CompaniesPageViewProps) {
   const { t } = useTranslation();
   const [isNewCompanyOpen, setIsNewCompanyOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -46,13 +45,6 @@ export function CompaniesPageView({ companies, unassignedContacts }: CompaniesPa
       return true;
     });
   }, [companies, query, industry]);
-
-  const filteredUnassigned = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    if (industry !== "ALL") return [];
-    if (!q) return unassignedContacts;
-    return unassignedContacts.filter((c) => c.fullName.toLowerCase().includes(q));
-  }, [unassignedContacts, query, industry]);
 
   return (
     <div className="flex flex-col gap-4 pb-12">
@@ -84,10 +76,10 @@ export function CompaniesPageView({ companies, unassignedContacts }: CompaniesPa
         />
       </FilterBar>
 
-      {filteredCompanies.length === 0 && filteredUnassigned.length === 0 && isFiltered ? (
+      {filteredCompanies.length === 0 && isFiltered ? (
         <ListEmpty>{t("filters.empty")}</ListEmpty>
       ) : (
-        <CompanyAccordion companies={filteredCompanies} unassignedContacts={filteredUnassigned} />
+        <CompanyAccordion companies={filteredCompanies} />
       )}
 
       <CompanyFormDialog open={isNewCompanyOpen} onOpenChange={setIsNewCompanyOpen} />

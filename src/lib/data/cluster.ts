@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import type { ContactCategory } from "@/generated/prisma/enums";
-import type { TimelineEvent } from "@/lib/timeline-entity";
+import type { ClusterEvent } from "@/lib/timeline-entity";
 
 export interface ClusterMember {
   id: string;
@@ -19,7 +19,7 @@ export interface ClusterDiagramData {
   seedContactId: string;
   members: ClusterMember[];
   edges: ClusterEdge[];
-  events: TimelineEvent[];
+  events: ClusterEvent[];
 }
 
 /** A timeline entity key ("contact:ID" or "connection:ID") names either a
@@ -167,7 +167,7 @@ export async function getClusterDiagramData(userId: string, entityKey: string): 
       : Promise.resolve([]),
   ]);
 
-  const events: TimelineEvent[] = [];
+  const events: ClusterEvent[] = [];
 
   for (const i of contactInteractions) {
     if (!i.contact) continue;

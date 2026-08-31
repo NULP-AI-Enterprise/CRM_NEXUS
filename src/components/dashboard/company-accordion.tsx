@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Building2, Maximize2, Users } from "lucide-react";
+import { Building2, Maximize2 } from "lucide-react";
 import { toast } from "sonner";
 
 import {
@@ -12,8 +12,6 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import { ContactCard } from "@/components/dashboard/contact-card";
-import { CompanyFormDialog } from "@/components/dashboard/company-form-dialog";
-import { CompanyDetailPanel } from "@/components/dashboard/company-detail-panel";
 import { ConfirmDeleteDialog } from "@/components/confirm-delete-dialog";
 import { EntityCardActions } from "@/components/dashboard/entity-card";
 import { useTranslation } from "@/lib/i18n/context";
@@ -21,25 +19,16 @@ import type { CompanyModel, ContactModel } from "@/generated/prisma/models";
 
 type CompanyWithContacts = CompanyModel & { contacts: ContactModel[] };
 
-const UNASSIGNED_VALUE = "__unassigned";
 // On md+ show all four columns; below that collapse to just name + count
 const ROW_COLUMNS_MD = "minmax(0, 1fr) 160px 80px 56px";
 const ROW_COLUMNS_SM = "minmax(0, 1fr) 60px";
 
-export function CompanyAccordion({
-  companies,
-  unassignedContacts,
-}: {
-  companies: CompanyWithContacts[];
-  unassignedContacts: ContactModel[];
-}) {
+export function CompanyAccordion({ companies }: { companies: CompanyWithContacts[] }) {
   const { t } = useTranslation();
   const router = useRouter();
-  const [editingCompany, setEditingCompany] = useState<CompanyModel | null>(null);
   const [deletingCompany, setDeletingCompany] = useState<CompanyModel | null>(null);
-  const [detailCompanyId, setDetailCompanyId] = useState<string | null>(null);
 
-  if (companies.length === 0 && unassignedContacts.length === 0) {
+  if (companies.length === 0) {
     return (
       <div className="rounded-xl border border-dashed border-border bg-muted p-10 text-center text-xs text-muted-foreground">
         <Building2 className="mx-auto size-6 text-muted-foreground mb-2" />
@@ -48,10 +37,7 @@ export function CompanyAccordion({
     );
   }
 
-  const defaultValue = [
-    ...companies.map((company) => company.id),
-    ...(unassignedContacts.length > 0 ? [UNASSIGNED_VALUE] : []),
-  ];
+  const defaultValue = companies.map((company) => company.id);
 
   return (
     <>
@@ -106,18 +92,14 @@ export function CompanyAccordion({
               <button
                 onClick={(e) => {
                   e.stopPropagation();
-                  setDetailCompanyId(company.id);
+                  router.push(`/companies/${company.id}`);
                 }}
                 title={t("company.detail.viewDetails")}
                 className="flex items-center gap-1 rounded-md px-2 py-1 text-[11px] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
               >
                 <Maximize2 className="size-3" />
               </button>
-              <EntityCardActions
-                onEdit={() => setEditingCompany(company)}
-                onDelete={() => setDeletingCompany(company)}
-                className="opacity-100"
-              />
+              <EntityCardActions onDelete={() => setDeletingCompany(company)} className="opacity-100" />
             </div>
             <AccordionContent className="px-[18px] pb-4 pt-0">
               <div className="grid gap-3" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(230px, 1fr))" }}>
@@ -128,32 +110,7 @@ export function CompanyAccordion({
             </AccordionContent>
           </AccordionItem>
         ))}
-
-        {unassignedContacts.length > 0 && (
-          <AccordionItem value={UNASSIGNED_VALUE} className="group relative">
-            <AccordionTrigger className="px-[18px] py-[13px] hover:no-underline hover:bg-muted/40 rounded-none">
-              <div className="flex items-center gap-[9px]">
-                <Users className="size-3.5 shrink-0 text-muted-foreground" />
-                <span className="text-[13px] font-semibold text-foreground">{t("company.noCompany")}</span>
-                <span className="font-mono text-[11px] text-muted-foreground">{unassignedContacts.length}</span>
-              </div>
-            </AccordionTrigger>
-            <AccordionContent className="px-[18px] pb-4 pt-0">
-              <div className="grid gap-3" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(230px, 1fr))" }}>
-                {unassignedContacts.map((contact) => (
-                  <ContactCard key={contact.id} contact={contact} />
-                ))}
-              </div>
-            </AccordionContent>
-          </AccordionItem>
-        )}
       </Accordion>
-
-      <CompanyFormDialog
-        open={Boolean(editingCompany)}
-        onOpenChange={(open) => !open && setEditingCompany(null)}
-        company={editingCompany}
-      />
 
       {deletingCompany && (
         <ConfirmDeleteDialog
@@ -172,8 +129,6 @@ export function CompanyAccordion({
           }}
         />
       )}
-
-      <CompanyDetailPanel companyId={detailCompanyId} onOpenChange={(open) => !open && setDetailCompanyId(null)} />
     </>
   );
 }

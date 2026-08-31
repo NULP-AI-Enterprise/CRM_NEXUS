@@ -12,8 +12,6 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import { ContactCard } from "@/components/dashboard/contact-card";
-import { CommunityFormDialog } from "@/components/dashboard/community-form-dialog";
-import { CommunityDetailPanel } from "@/components/dashboard/community-detail-panel";
 import { ConfirmDeleteDialog } from "@/components/confirm-delete-dialog";
 import { EntityCardActions } from "@/components/dashboard/entity-card";
 import { useTranslation } from "@/lib/i18n/context";
@@ -24,9 +22,7 @@ type CommunityWithContacts = CommunityModel & { contacts: ContactModel[] };
 export function CommunityAccordion({ communities }: { communities: CommunityWithContacts[] }) {
   const { t } = useTranslation();
   const router = useRouter();
-  const [editingCommunity, setEditingCommunity] = useState<CommunityModel | null>(null);
   const [deletingCommunity, setDeletingCommunity] = useState<CommunityModel | null>(null);
-  const [detailCommunityId, setDetailCommunityId] = useState<string | null>(null);
 
   if (communities.length === 0) {
     return (
@@ -81,18 +77,14 @@ export function CommunityAccordion({ communities }: { communities: CommunityWith
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
-                    setDetailCommunityId(community.id);
+                    router.push(`/communities/${community.id}`);
                   }}
                   title={t("community.detail.viewDetails")}
                   className="flex items-center gap-1 rounded-md px-2 py-1 text-[11px] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
                 >
                   <Maximize2 className="size-3" />
                 </button>
-                <EntityCardActions
-                  onEdit={() => setEditingCommunity(community)}
-                  onDelete={() => setDeletingCommunity(community)}
-                  className="opacity-100"
-                />
+                <EntityCardActions onDelete={() => setDeletingCommunity(community)} className="opacity-100" />
               </div>
 
               <AccordionContent className="pb-3.5 pt-2.5">
@@ -113,12 +105,6 @@ export function CommunityAccordion({ communities }: { communities: CommunityWith
         ))}
       </div>
 
-      <CommunityFormDialog
-        open={Boolean(editingCommunity)}
-        onOpenChange={(open) => !open && setEditingCommunity(null)}
-        community={editingCommunity}
-      />
-
       {deletingCommunity && (
         <ConfirmDeleteDialog
           open={Boolean(deletingCommunity)}
@@ -136,8 +122,6 @@ export function CommunityAccordion({ communities }: { communities: CommunityWith
           }}
         />
       )}
-
-      <CommunityDetailPanel communityId={detailCommunityId} onOpenChange={(open) => !open && setDetailCommunityId(null)} />
     </>
   );
 }

@@ -3,11 +3,13 @@ import { z } from "zod";
 
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { InteractionType } from "@/generated/prisma/enums";
 import { checkRateLimit, getClientIp, rateLimitedResponse } from "@/lib/rate-limit";
 import { interactionOwnerConditions } from "@/lib/data/interaction-ownership";
 
 const logInteractionSchema = z.object({
   rawText: z.string().trim().min(1).max(8000),
+  type: z.nativeEnum(InteractionType).default("MEMO"),
   followUp: z.string().trim().max(2000).nullish(),
   followUpDate: z.string().date().nullish(),
   createdAt: z.string().datetime().nullish(),
@@ -26,11 +28,11 @@ export async function POST(request: Request, { params }: RouteContext) {
   }
 
   const { id } = await params;
-  const connection = await prisma.contactConnection.findFirst({
+  const contact = await prisma.contact.findFirst({
     where: { id, userId: session.user.id },
   });
-  if (!connection) {
-    return NextResponse.json({ error: "Connection not found." }, { status: 404 });
+  if (!contact) {
+    return NextResponse.json({ error: "Contact not found." }, { status: 404 });
   }
 
   let body: unknown;
@@ -49,8 +51,8 @@ export async function POST(request: Request, { params }: RouteContext) {
   }
 
   // A branch's parent just has to be one of the user's own interactions, not
-  // necessarily on this same connection — that's what lets a provenance
-  // chain cross entities (X introduces Y; Y's first event branches off X's).
+  // necessarily on this same contact — that's what lets a provenance chain
+  // cross entities (X introduces Y; Y's first event branches off X's).
   let validParentId: string | null = null;
   if (parsed.data.parentInteractionId) {
     const parent = await prisma.interaction.findFirst({
@@ -62,8 +64,8 @@ export async function POST(request: Request, { params }: RouteContext) {
 
   const interaction = await prisma.interaction.create({
     data: {
-      connectionId: connection.id,
-      type: "MEMO",
+      contactId: contact.id,
+      type: parsed.data.type,
       rawText: parsed.data.rawText,
       followUp: parsed.data.followUp || null,
       followUpDate: parsed.data.followUpDate ? new Date(parsed.data.followUpDate) : null,

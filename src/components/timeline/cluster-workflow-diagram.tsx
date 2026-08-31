@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useTransition } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { format } from "date-fns";
 import { uk, enUS } from "date-fns/locale";
 import { Crosshair, GitBranch, Loader2, Maximize2, Minus, Move, Pencil, Plus, Trash2, X } from "lucide-react";
@@ -12,10 +12,13 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ConfirmDeleteDialog } from "@/components/confirm-delete-dialog";
 import { BranchParentPicker, invalidateBranchParentCache } from "@/components/timeline/branch-parent-picker";
+import { FollowUpFields } from "@/components/timeline/history-graph-view";
 import { useTranslation } from "@/lib/i18n/context";
-import { INTERACTION_TYPE_LABELS } from "@/lib/contact-display";
 import type { ClusterDiagramData } from "@/lib/data/cluster";
-import { entityLabel, type TimelineEvent } from "@/lib/timeline-entity";
+import { entityKey, entityLabel, interactionCreateUrl, type ClusterEvent } from "@/lib/timeline-entity";
+import type { InteractionType } from "@/generated/prisma/enums";
+
+const EDITABLE_TYPES: InteractionType[] = ["MEETING", "CALL", "INTRO", "EMAIL", "WORKSHOP", "MEMO"];
 
 const ROW_HEIGHT = 92;
 const COLUMN_WIDTH = 208;
@@ -42,7 +45,7 @@ const depthColor = (d: number) => DEPTH_COLORS[Math.min(d, DEPTH_COLORS.length -
 /** An event I was personally in — the app only ever attaches an interaction to
  * a single Contact when it's "me and them", so contact-attached is exactly
  * "I was there". Connection-attached means two other people talked. */
-function isDirect(event: TimelineEvent): boolean {
+function isDirect(event: ClusterEvent): boolean {
   return event.entity.kind === "contact";
 }
 
@@ -74,20 +77,24 @@ function ghostCurve(x1: number, y1: number, x2: number, y2: number): string {
 }
 
 /** Where to POST a new branch off `event` — reuses the exact same endpoints
- * every other logging form in this app already uses, just with
- * `parentInteractionId` set, so branches behave identically to any other
- * interaction (AI re-profiling included for contact-attached ones). */
-function branchTarget(event: TimelineEvent): { url: string; body: (rawText: string) => Record<string, unknown> } {
-  if (event.entity.kind === "contact") {
-    return {
-      url: "/api/process-interaction",
-      body: (rawText) => ({ rawText, contactId: event.entity.kind === "contact" ? event.entity.contact.id : "", parentInteractionId: event.id }),
-    };
-  }
+ * every other logging form in this app already uses (via the shared
+ * `interactionCreateUrl`, the one place entity-kind → URL routing lives),
+ * just with `parentInteractionId` set, so branches behave identically to any
+ * other interaction. */
+function branchTarget(event: ClusterEvent): { url: string; body: (rawText: string, extra?: Record<string, unknown>) => Record<string, unknown> } {
   return {
-    url: `/api/connections/${event.entity.connection.id}/interactions`,
-    body: (rawText) => ({ rawText, parentInteractionId: event.id }),
+    url: interactionCreateUrl(entityKey(event.entity)),
+    body: (rawText, extra) => ({ rawText, parentInteractionId: event.id, ...extra }),
   };
+}
+
+/** Where to POST a brand-new top-level (parentless) entry for this cluster's
+ * own seed entity — same routing as `branchTarget`, just keyed off the
+ * cluster's own entityKey (`"contact:<id>"` / `"connection:<id>"`) instead of
+ * a specific event's entity, since a fresh entry has no event of its own to
+ * derive one from yet. */
+function newEntryTarget(key: string): { url: string; body: (rawText: string, extra?: Record<string, unknown>) => Record<string, unknown> } {
+  return { url: interactionCreateUrl(key), body: (rawText, extra) => ({ rawText, parentInteractionId: null, ...extra }) };
 }
 
 interface View {
@@ -138,6 +145,7 @@ export function ClusterWorkflowDiagram({
   onOpenChange,
   entityKey,
   initialEventId,
+  variant = "modal",
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -145,6 +153,11 @@ export function ClusterWorkflowDiagram({
   /** Jump straight to this event's expansion once loaded — set when the
    * trigger was clicking a specific event row, not just the lane's icon. */
   initialEventId?: string | null;
+  /** "modal" (default) renders today's full-screen Dialog, unchanged, for all
+   * existing callers. "inline" renders the same content directly into the
+   * caller's own sized container instead — no Dialog, no title (the
+   * embedding page already has its own heading). */
+  variant?: "modal" | "inline";
 }) {
   const { t, locale } = useTranslation();
   const dateLocale = locale === "uk" ? uk : enUS;
@@ -155,10 +168,20 @@ export function ClusterWorkflowDiagram({
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
   const [isEditingText, setIsEditingText] = useState(false);
   const [editText, setEditText] = useState("");
-  const [editType, setEditType] = useState("");
+  const [editType, setEditType] = useState<InteractionType>("MEMO");
   const [editDate, setEditDate] = useState("");
   const [isAddingBranch, setIsAddingBranch] = useState(false);
   const [branchDraft, setBranchDraft] = useState("");
+  const [branchType, setBranchType] = useState<InteractionType>("MEMO");
+  const [branchFollowUpOn, setBranchFollowUpOn] = useState(false);
+  const [branchFollowUpDate, setBranchFollowUpDate] = useState("");
+  const [branchFollowUpText, setBranchFollowUpText] = useState("");
+  const [isAddingRootEntry, setIsAddingRootEntry] = useState(false);
+  const [rootDraft, setRootDraft] = useState("");
+  const [rootType, setRootType] = useState<InteractionType>("MEMO");
+  const [rootFollowUpOn, setRootFollowUpOn] = useState(false);
+  const [rootFollowUpDate, setRootFollowUpDate] = useState("");
+  const [rootFollowUpText, setRootFollowUpText] = useState("");
   const [isRelinking, setIsRelinking] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
@@ -169,6 +192,9 @@ export function ClusterWorkflowDiagram({
    * left no way to see the shape of the thing, only a keyhole onto it. */
   const [view, setView] = useState({ x: 0, y: 0, k: 1 });
   const viewportRef = useRef<HTMLDivElement>(null);
+  /** Cleans up the previous element's ResizeObserver + wheel listener before
+   * (re)attaching to a new one — see `setViewportEl` below. */
+  const viewportCleanupRef = useRef<(() => void) | null>(null);
   const [viewportSize, setViewportSize] = useState({ width: 0, height: 0 });
   /** Set while a drag is in flight; read by the node click handler so that
    * finishing a pan on top of a node doesn't also select it. */
@@ -245,21 +271,6 @@ export function ClusterWorkflowDiagram({
     [view],
   );
 
-  useLayoutEffect(() => {
-    const el = viewportRef.current;
-    if (!el) return;
-    const measure = () => {
-      const { width, height } = el.getBoundingClientRect();
-      setViewportSize((prev) =>
-        Math.abs(prev.width - width) < 0.5 && Math.abs(prev.height - height) < 0.5 ? prev : { width, height },
-      );
-    };
-    measure();
-    const ro = new ResizeObserver(measure);
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, [open]);
-
   const refetch = useCallback(() => {
     if (!entityKey) return;
     fetch(`/api/timeline/cluster?entityKey=${encodeURIComponent(entityKey)}`)
@@ -278,6 +289,36 @@ export function ClusterWorkflowDiagram({
         setLoadedKey(entityKey);
       });
   }, [entityKey, t]);
+
+  // This one instance is reused across different entities — node-inspector.tsx
+  // and friends keep a single ClusterWorkflowDiagram mounted and just change
+  // `entityKey` as the user selects a different node, rather than remounting
+  // it per entity. Every composer's open/draft state lived past that switch
+  // until now, so starting a branch or new-entry draft on contact A, then
+  // switching to contact B without saving, would silently reopen the same
+  // composer pre-filled with A's leftover text/type/follow-up under B.
+  // Adjusted during render (same pattern node-inspector.tsx uses for its own
+  // per-node reset) rather than in an effect, so it lands in the same commit
+  // instead of an extra cascading render.
+  const [lastEntityKey, setLastEntityKey] = useState<string | null>(entityKey);
+  if (entityKey !== lastEntityKey) {
+    setLastEntityKey(entityKey);
+    setIsEditingText(false);
+    setIsAddingBranch(false);
+    setBranchDraft("");
+    setBranchType("MEMO");
+    setBranchFollowUpOn(false);
+    setBranchFollowUpDate("");
+    setBranchFollowUpText("");
+    setIsAddingRootEntry(false);
+    setRootDraft("");
+    setRootType("MEMO");
+    setRootFollowUpOn(false);
+    setRootFollowUpDate("");
+    setRootFollowUpText("");
+    setIsRelinking(false);
+    setIsDeleteOpen(false);
+  }
 
   useEffect(() => {
     if (!open || !entityKey) return;
@@ -330,7 +371,7 @@ export function ClusterWorkflowDiagram({
     // hand-edited data) terminates instead of blowing the stack.
     const depthCache = new Map<string, number>();
     const resolving = new Set<string>();
-    const depthOf = (event: TimelineEvent): number => {
+    const depthOf = (event: ClusterEvent): number => {
       const cached = depthCache.get(event.id);
       if (cached !== undefined) return cached;
       if (isDirect(event)) {
@@ -483,6 +524,16 @@ export function ClusterWorkflowDiagram({
     setIsEditingText(false);
     setIsAddingBranch(false);
     setIsRelinking(false);
+    setIsAddingRootEntry(false);
+    // Closing the branch composer above only hides it — without also
+    // clearing its draft, reopening "+ Add branch here" on this new node
+    // would resurface whatever text/type/follow-up was left over from
+    // whichever node it was last opened on.
+    setBranchDraft("");
+    setBranchType("MEMO");
+    setBranchFollowUpOn(false);
+    setBranchFollowUpDate("");
+    setBranchFollowUpText("");
   };
 
   /** Holds whichever drag's window listeners are currently attached, so they
@@ -518,7 +569,7 @@ export function ClusterWorkflowDiagram({
    * across means the first couple of pixels of real cursor movement leave
    * it and every further pointermove/pointerup simply stops arriving.
    * Window-level listeners are the standard, engine-independent fix. */
-  const handlePortPointerDown = (n: { event: TimelineEvent; x: number; cy: number }, side: "left" | "right") => (
+  const handlePortPointerDown = (n: { event: ClusterEvent; x: number; cy: number }, side: "left" | "right") => (
     e: React.PointerEvent<SVGGElement>,
   ) => {
     e.stopPropagation();
@@ -627,7 +678,7 @@ export function ClusterWorkflowDiagram({
    * perfectly still) and marks it as a pan, so `selectEvent`'s own
    * `panRef.current?.moved` guard silently discards the click that follows.
    * Every click on a card was going through that same leak. */
-  const handleBodyPointerDown = (n: { event: TimelineEvent; cx: number; cy: number }) => (e: React.PointerEvent<SVGGElement>) => {
+  const handleBodyPointerDown = (n: { event: ClusterEvent; cx: number; cy: number }) => (e: React.PointerEvent<SVGGElement>) => {
     if (e.button !== 0 && e.pointerType === "mouse") return;
     e.stopPropagation();
     activeDragCleanupRef.current?.();
@@ -741,15 +792,58 @@ export function ClusterWorkflowDiagram({
   const zoomByButton = (factor: number) =>
     zoomAbout(viewportSize.width / 2, viewportSize.height / 2, factor);
 
-  const handleViewportWheel = (e: React.WheelEvent<HTMLDivElement>) => {
-    if (!e.ctrlKey && !e.metaKey && Math.abs(e.deltaX) > Math.abs(e.deltaY)) {
-      // Horizontal trackpad flicks read as "scroll along the timeline".
-      setView((v) => ({ ...v, x: v.x - e.deltaX }));
-      return;
-    }
-    const rect = e.currentTarget.getBoundingClientRect();
-    zoomAbout(e.clientX - rect.left, e.clientY - rect.top, e.deltaY < 0 ? 1.12 : 1 / 1.12);
-  };
+  // `viewportRef`'s div only enters the DOM once `layout` resolves (it sits
+  // behind `isCurrent && !error && layout` — see the JSX below), which can
+  // happen on a tick after this component's mount-time effects already ran
+  // and found the ref still null. A plain useEffect keyed on stable deps
+  // would then never retry and silently never attach either piece of setup
+  // below — so both live in a callback ref instead, which React invokes
+  // exactly when the element itself mounts/unmounts, independent of when
+  // that happens relative to any other effect.
+  const setViewportEl = useCallback(
+    (el: HTMLDivElement | null) => {
+      viewportRef.current = el;
+      viewportCleanupRef.current?.();
+      viewportCleanupRef.current = null;
+      if (!el) return;
+
+      const measure = () => {
+        const { width, height } = el.getBoundingClientRect();
+        setViewportSize((prev) =>
+          Math.abs(prev.width - width) < 0.5 && Math.abs(prev.height - height) < 0.5 ? prev : { width, height },
+        );
+      };
+      measure();
+      const ro = new ResizeObserver(measure);
+      ro.observe(el);
+
+      // Conventional canvas/map interaction: plain wheel or trackpad scroll
+      // pans (previously any vertical-dominant delta zoomed instead, so a
+      // plain mouse wheel could never pan at all); ctrl/meta + wheel — how
+      // browsers report a trackpad pinch, and the explicit "I want to zoom"
+      // gesture on a mouse — zooms. preventDefault stops the page itself
+      // from scrolling underneath the (often inline-embedded) canvas at the
+      // same time — React registers a JSX onWheel listener as passive
+      // unconditionally, which silently makes preventDefault a no-op there,
+      // so this has to be a real, manually attached, non-passive listener.
+      const onWheel = (e: WheelEvent) => {
+        e.preventDefault();
+        if (e.ctrlKey || e.metaKey) {
+          const rect = el.getBoundingClientRect();
+          zoomAbout(e.clientX - rect.left, e.clientY - rect.top, e.deltaY < 0 ? 1.12 : 1 / 1.12);
+          return;
+        }
+        setView((v) => ({ ...v, x: v.x - e.deltaX, y: v.y - e.deltaY }));
+      };
+      el.addEventListener("wheel", onWheel, { passive: false });
+
+      viewportCleanupRef.current = () => {
+        ro.disconnect();
+        el.removeEventListener("wheel", onWheel);
+      };
+    },
+    [zoomAbout],
+  );
 
   const handleViewportPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
     if (e.button !== 0 && e.pointerType === "mouse") return;
@@ -789,8 +883,13 @@ export function ClusterWorkflowDiagram({
   // the first paint is already framed — an effect would show one frame of the
   // graph parked at the origin first. Deliberately not re-run on resize, which
   // would throw away a zoom the user set on purpose; Fit covers that.
+  // Keyed on loadedKey alone (NOT fetchedAt) — fetchedAt also bumps on every
+  // same-cluster refetch after a mutation (edit/branch/delete/relink), and
+  // keying on it here used to snap the view back to fit/center-on-open right
+  // after every single edit, discarding the zoom/pan the user was mid-way
+  // through and making a freshly created branch look like it never appeared.
   const [framedFor, setFramedFor] = useState<string | null>(null);
-  const frameStamp = layout && viewportSize.width >= 1 ? `${loadedKey}:${fetchedAt}` : null;
+  const frameStamp = layout && viewportSize.width >= 1 ? loadedKey : null;
   if (frameStamp && layout && framedFor !== frameStamp) {
     setFramedFor(frameStamp);
     const initial =
@@ -912,7 +1011,7 @@ export function ClusterWorkflowDiagram({
   /** Shared primitive behind both the panel's "+ Add branch here" form and the
    * drag-handle-into-empty-space gesture — same POST either way, just a
    * different entry point for where the text comes from. */
-  const createBranch = (sourceEvent: TimelineEvent, text: string, onSuccess?: () => void) => {
+  const createBranch = (sourceEvent: ClusterEvent, text: string, onSuccess?: () => void, extra?: Record<string, unknown>) => {
     if (!text.trim()) return;
     const target = branchTarget(sourceEvent);
     startTransition(async () => {
@@ -920,7 +1019,7 @@ export function ClusterWorkflowDiagram({
         const res = await fetch(target.url, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(target.body(text.trim())),
+          body: JSON.stringify(target.body(text.trim(), extra)),
         });
         if (!res.ok) throw new Error();
         invalidateBranchParentCache();
@@ -934,31 +1033,81 @@ export function ClusterWorkflowDiagram({
 
   const handleAddBranch = () => {
     if (!selectedEvent) return;
-    createBranch(selectedEvent, branchDraft, () => {
-      setBranchDraft("");
-      setIsAddingBranch(false);
-    });
+    createBranch(
+      selectedEvent,
+      branchDraft,
+      () => {
+        setBranchDraft("");
+        setIsAddingBranch(false);
+        setBranchType("MEMO");
+        setBranchFollowUpOn(false);
+        setBranchFollowUpDate("");
+        setBranchFollowUpText("");
+      },
+      {
+        type: branchType,
+        followUpDate: branchFollowUpOn && branchFollowUpDate ? branchFollowUpDate : undefined,
+        followUp: branchFollowUpOn && branchFollowUpText.trim() ? branchFollowUpText.trim() : undefined,
+      },
+    );
   };
 
   /** Double-click a card to jump straight into editing it, instead of
    * click-to-select then hunt for the Edit button in the panel below. */
-  const openInlineEdit = (event: TimelineEvent) => {
+  const openInlineEdit = (event: ClusterEvent) => {
     setSelectedEventId(event.id);
     setIsAddingBranch(false);
     setIsRelinking(false);
+    setIsAddingRootEntry(false);
     setEditText(event.rawText);
     setEditType(event.type);
     setEditDate(format(new Date(event.createdAt), "yyyy-MM-dd"));
     setIsEditingText(true);
   };
 
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="flex h-[88dvh] w-[96vw] max-w-[96vw] flex-col p-3 sm:max-w-[95vw] sm:p-4">
-        <DialogHeader>
-          <DialogTitle className="text-sm font-semibold text-foreground">{t("cluster.title")}</DialogTitle>
-        </DialogHeader>
+  /** Opens the plain "+ New entry" composer — mutually exclusive with node
+   * selection, since a fresh top-level entry isn't attached to any card. */
+  const startAddingRootEntry = () => {
+    setSelectedEventId(null);
+    setIsEditingText(false);
+    setIsAddingBranch(false);
+    setIsRelinking(false);
+    setIsAddingRootEntry(true);
+  };
 
+  const handleAddRootEntry = () => {
+    if (!entityKey || !rootDraft.trim()) return;
+    const target = newEntryTarget(entityKey);
+    startTransition(async () => {
+      try {
+        const res = await fetch(target.url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(
+            target.body(rootDraft.trim(), {
+              type: rootType,
+              followUpDate: rootFollowUpOn && rootFollowUpDate ? rootFollowUpDate : undefined,
+              followUp: rootFollowUpOn && rootFollowUpText.trim() ? rootFollowUpText.trim() : undefined,
+            }),
+          ),
+        });
+        if (!res.ok) throw new Error();
+        invalidateBranchParentCache();
+        refetch();
+        setRootDraft("");
+        setIsAddingRootEntry(false);
+        setRootType("MEMO");
+        setRootFollowUpOn(false);
+        setRootFollowUpDate("");
+        setRootFollowUpText("");
+      } catch {
+        toast.error(t("cluster.expand.saveError"));
+      }
+    });
+  };
+
+  const content = (
+    <>
         {isLoading && (
           <div className="flex flex-1 items-center justify-center gap-2 text-xs text-muted-foreground">
             <Loader2 className="size-4 animate-spin" />
@@ -972,31 +1121,37 @@ export function ClusterWorkflowDiagram({
 
         {isCurrent && !error && layout && (
           <>
-            <div className="flex flex-wrap items-center gap-4 pb-2 text-[11px] text-muted-foreground shrink-0">
-              <span className="flex items-center gap-1.5">
-                <span className="h-2.5 w-4 rounded-sm" style={{ background: MAIN_INK }} />
-                {t("cluster.legend.mainLine")}
-              </span>
-              <span className="flex items-center gap-1.5">
-                <svg width="18" height="10" aria-hidden>
-                  <path d="M 0 2 C 8 2, 10 8, 18 8" fill="none" stroke={depthColor(1)} strokeWidth={1.6} strokeDasharray="4 3" />
-                </svg>
-                {t("cluster.legend.branchDown")}
-              </span>
-              <span className="flex items-center gap-1.5">
-                <svg width="18" height="10" aria-hidden>
-                  <path d="M 0 8 C 8 8, 10 2, 16 2" fill="none" stroke={depthColor(1)} strokeWidth={2} />
-                  <path d="M 11 -1 L 18 2 L 11 5 Z" fill={depthColor(1)} />
-                </svg>
-                {t("cluster.legend.mergeUp")}
-              </span>
-              <span className="flex items-center gap-1.5">
-                <svg width="18" height="12" aria-hidden>
-                  <line x1="1" y1="6" x2="17" y2="6" stroke={MAIN_INK} strokeWidth={1.6} opacity={0.85} />
-                  <line x1="1" y1="1" x2="1" y2="11" stroke={MAIN_INK} strokeWidth={2.2} opacity={0.85} />
-                </svg>
-                {t("cluster.legend.root")}
-              </span>
+            <div className="flex flex-wrap items-center justify-between gap-3 pb-2 shrink-0">
+              <div className="flex flex-wrap items-center gap-4 text-[11px] text-muted-foreground">
+                <span className="flex items-center gap-1.5">
+                  <span className="h-2.5 w-4 rounded-sm" style={{ background: MAIN_INK }} />
+                  {t("cluster.legend.mainLine")}
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <svg width="18" height="10" aria-hidden>
+                    <path d="M 0 2 C 8 2, 10 8, 18 8" fill="none" stroke={depthColor(1)} strokeWidth={1.6} strokeDasharray="4 3" />
+                  </svg>
+                  {t("cluster.legend.branchDown")}
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <svg width="18" height="10" aria-hidden>
+                    <path d="M 0 8 C 8 8, 10 2, 16 2" fill="none" stroke={depthColor(1)} strokeWidth={2} />
+                    <path d="M 11 -1 L 18 2 L 11 5 Z" fill={depthColor(1)} />
+                  </svg>
+                  {t("cluster.legend.mergeUp")}
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <svg width="18" height="12" aria-hidden>
+                    <line x1="1" y1="6" x2="17" y2="6" stroke={MAIN_INK} strokeWidth={1.6} opacity={0.85} />
+                    <line x1="1" y1="1" x2="1" y2="11" stroke={MAIN_INK} strokeWidth={2.2} opacity={0.85} />
+                  </svg>
+                  {t("cluster.legend.root")}
+                </span>
+              </div>
+              <Button size="sm" variant="outline" onClick={startAddingRootEntry} className="h-7 shrink-0 gap-1.5 px-2.5 text-[11px]">
+                <Plus className="size-3.5" />
+                {t("cluster.newEntry")}
+              </Button>
             </div>
             <div className="flex items-center gap-1.5 pb-2 text-[10.5px] text-muted-foreground/80 shrink-0">
               <Move className="size-3 shrink-0" />
@@ -1010,8 +1165,7 @@ export function ClusterWorkflowDiagram({
             ) : (
               <div className="flex flex-1 min-h-0 flex-col gap-2.5">
                 <div
-                  ref={viewportRef}
-                  onWheel={handleViewportWheel}
+                  ref={setViewportEl}
                   onPointerDown={handleViewportPointerDown}
                   onPointerMove={handleViewportPointerMove}
                   onPointerUp={endPan}
@@ -1179,8 +1333,15 @@ export function ClusterWorkflowDiagram({
                               onPointerDown={handlePortPointerDown({ event: n.event, x: n.x, cy: n.cy }, "left")}
                             >
                               <title>{t("cluster.portLeftTitle")}</title>
-                              <circle r={7} fill="var(--card)" stroke={n.color} strokeWidth={1.4} opacity={0.85} />
-                              <path d="M 2.5 -3.5 L -2.5 0 L 2.5 3.5" fill="none" stroke={n.color} strokeWidth={1.4} opacity={0.85} />
+                              {/* Counter-scaled so the port stays a constant,
+                                  reliably grabbable screen size regardless of
+                                  canvas zoom — at fitView's typical k of
+                                  0.2-0.3 on a real history, an unscaled 7px
+                                  port shrinks to 1-2px on screen. */}
+                              <g transform={`scale(${1 / Math.max(view.k, 0.01)})`}>
+                                <circle r={7} fill="var(--card)" stroke={n.color} strokeWidth={1.4} opacity={0.85} />
+                                <path d="M 2.5 -3.5 L -2.5 0 L 2.5 3.5" fill="none" stroke={n.color} strokeWidth={1.4} opacity={0.85} />
+                              </g>
                             </g>
                             <g
                               transform={`translate(${n.x + NODE_W} ${n.cy})`}
@@ -1188,8 +1349,10 @@ export function ClusterWorkflowDiagram({
                               onPointerDown={handlePortPointerDown({ event: n.event, x: n.x, cy: n.cy }, "right")}
                             >
                               <title>{t("cluster.portRightTitle")}</title>
-                              <circle r={7} fill="var(--card)" stroke={n.color} strokeWidth={1.4} opacity={0.85} />
-                              <path d="M -2.5 -3.5 L 2.5 0 L -2.5 3.5" fill="none" stroke={n.color} strokeWidth={1.4} opacity={0.85} />
+                              <g transform={`scale(${1 / Math.max(view.k, 0.01)})`}>
+                                <circle r={7} fill="var(--card)" stroke={n.color} strokeWidth={1.4} opacity={0.85} />
+                                <path d="M -2.5 -3.5 L 2.5 0 L -2.5 3.5" fill="none" stroke={n.color} strokeWidth={1.4} opacity={0.85} />
+                              </g>
                             </g>
                           </g>
                         );
@@ -1359,14 +1522,14 @@ export function ClusterWorkflowDiagram({
                         {isEditingText ? (
                           <div className="mt-1.5 flex flex-col gap-1.5">
                             <div className="flex gap-2">
-                              <Select value={editType} onValueChange={(v) => setEditType(v || "")}>
+                              <Select value={editType} onValueChange={(v) => setEditType((v as InteractionType) || "MEMO")}>
                                 <SelectTrigger className="h-7 w-[120px] text-xs">
-                                  <SelectValue placeholder="Type" />
+                                  <SelectValue>{(v: string | null) => (v ? t(`interactionType.${v as InteractionType}`) : "")}</SelectValue>
                                 </SelectTrigger>
                                 <SelectContent>
-                                  {(Object.keys(INTERACTION_TYPE_LABELS) as Array<keyof typeof INTERACTION_TYPE_LABELS>).map((type) => (
+                                  {EDITABLE_TYPES.map((type) => (
                                     <SelectItem key={type} value={type} className="text-xs">
-                                      {INTERACTION_TYPE_LABELS[type]}
+                                      {t(`interactionType.${type}`)}
                                     </SelectItem>
                                   ))}
                                 </SelectContent>
@@ -1406,6 +1569,20 @@ export function ClusterWorkflowDiagram({
 
                         {isAddingBranch && (
                           <div className="mt-2 flex flex-col gap-1.5 border-t border-border pt-2">
+                            {selectedEvent.entity.kind !== "connection" && (
+                              <Select value={branchType} onValueChange={(v) => setBranchType((v as InteractionType) || "MEMO")}>
+                                <SelectTrigger className="h-7 w-[130px] text-xs">
+                                  <SelectValue>{(v: string | null) => (v ? t(`interactionType.${v as InteractionType}`) : "")}</SelectValue>
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {EDITABLE_TYPES.map((type) => (
+                                    <SelectItem key={type} value={type} className="text-xs">
+                                      {t(`interactionType.${type}`)}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            )}
                             <Textarea
                               value={branchDraft}
                               onChange={(e) => setBranchDraft(e.target.value)}
@@ -1413,12 +1590,32 @@ export function ClusterWorkflowDiagram({
                               className="min-h-14 resize-none border-border bg-muted text-base md:text-xs"
                               autoFocus
                             />
+                            <FollowUpFields
+                              enabled={branchFollowUpOn}
+                              onToggle={() => setBranchFollowUpOn((v) => !v)}
+                              date={branchFollowUpDate}
+                              onDateChange={setBranchFollowUpDate}
+                              text={branchFollowUpText}
+                              onTextChange={setBranchFollowUpText}
+                              disabled={isPending}
+                            />
                             <div className="flex gap-1.5">
                               <Button size="sm" onClick={handleAddBranch} disabled={isPending || !branchDraft.trim()} className="h-6.5 text-[11px]">
                                 {isPending && <Loader2 className="size-3 animate-spin" />}
                                 {t("cluster.expand.save")}
                               </Button>
-                              <Button size="sm" variant="outline" onClick={() => setIsAddingBranch(false)} className="h-6.5 text-[11px]">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => {
+                                  setIsAddingBranch(false);
+                                  setBranchType("MEMO");
+                                  setBranchFollowUpOn(false);
+                                  setBranchFollowUpDate("");
+                                  setBranchFollowUpText("");
+                                }}
+                                className="h-6.5 text-[11px]"
+                              >
                                 {t("cluster.expand.cancel")}
                               </Button>
                             </div>
@@ -1487,16 +1684,120 @@ export function ClusterWorkflowDiagram({
                 )}
               </div>
             )}
+
+            {/* Plain top-level entry, with no card of its own to hang off —
+                sits outside the empty/non-empty split above so it's reachable
+                even before this cluster has a single event yet. */}
+            {isAddingRootEntry && (
+              <div className="shrink-0 rounded-lg border border-border bg-card p-3 text-xs">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0 flex-1">
+                    <p className="mb-1.5 text-[10px] font-medium text-muted-foreground">{t("cluster.newEntry")}</p>
+                    {!entityKey?.startsWith("connection:") && (
+                      <Select value={rootType} onValueChange={(v) => setRootType((v as InteractionType) || "MEMO")}>
+                        <SelectTrigger className="mb-1.5 h-7 w-[130px] text-xs">
+                          <SelectValue>{(v: string | null) => (v ? t(`interactionType.${v as InteractionType}`) : "")}</SelectValue>
+                        </SelectTrigger>
+                        <SelectContent>
+                          {EDITABLE_TYPES.map((type) => (
+                            <SelectItem key={type} value={type} className="text-xs">
+                              {t(`interactionType.${type}`)}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
+                    <Textarea
+                      autoFocus
+                      value={rootDraft}
+                      onChange={(e) => setRootDraft(e.target.value)}
+                      placeholder={t("cluster.newEntryPlaceholder")}
+                      className="min-h-16 resize-none border-border bg-muted text-base md:text-xs"
+                    />
+                    <div className="mt-1.5">
+                      <FollowUpFields
+                        enabled={rootFollowUpOn}
+                        onToggle={() => setRootFollowUpOn((v) => !v)}
+                        date={rootFollowUpDate}
+                        onDateChange={setRootFollowUpDate}
+                        text={rootFollowUpText}
+                        onTextChange={setRootFollowUpText}
+                        disabled={isPending}
+                      />
+                    </div>
+                    <div className="mt-1.5 flex gap-1.5">
+                      <Button size="sm" onClick={handleAddRootEntry} disabled={isPending || !rootDraft.trim()} className="h-6.5 text-[11px]">
+                        {isPending && <Loader2 className="size-3 animate-spin" />}
+                        {t("cluster.expand.save")}
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => {
+                          setIsAddingRootEntry(false);
+                          setRootDraft("");
+                          setRootType("MEMO");
+                          setRootFollowUpOn(false);
+                          setRootFollowUpDate("");
+                          setRootFollowUpText("");
+                        }}
+                        className="h-6.5 text-[11px]"
+                      >
+                        {t("cluster.expand.cancel")}
+                      </Button>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => {
+                      setIsAddingRootEntry(false);
+                      setRootDraft("");
+                      setRootType("MEMO");
+                      setRootFollowUpOn(false);
+                      setRootFollowUpDate("");
+                      setRootFollowUpText("");
+                    }}
+                    className="shrink-0 rounded p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground"
+                    aria-label={t("cluster.expand.close")}
+                  >
+                    <X className="size-4" />
+                  </button>
+                </div>
+              </div>
+            )}
           </>
         )}
-      </DialogContent>
+      </>
+    );
 
-      <ConfirmDeleteDialog
-        open={isDeleteOpen}
-        onOpenChange={setIsDeleteOpen}
-        description={t("cluster.expand.deleteConfirm")}
-        onConfirm={handleDelete}
-      />
-    </Dialog>
-  );
+    if (variant === "inline") {
+      return (
+        <>
+          <div className="flex h-full min-h-0 flex-col">{content}</div>
+          <ConfirmDeleteDialog
+            open={isDeleteOpen}
+            onOpenChange={setIsDeleteOpen}
+            description={t("cluster.expand.deleteConfirm")}
+            onConfirm={handleDelete}
+          />
+        </>
+      );
+    }
+
+    return (
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="flex h-[88dvh] w-[96vw] max-w-[96vw] flex-col p-3 sm:max-w-[95vw] sm:p-4">
+          <DialogHeader>
+            <DialogTitle className="text-sm font-semibold text-foreground">{t("cluster.title")}</DialogTitle>
+          </DialogHeader>
+          {content}
+        </DialogContent>
+
+        <ConfirmDeleteDialog
+          open={isDeleteOpen}
+          onOpenChange={setIsDeleteOpen}
+          description={t("cluster.expand.deleteConfirm")}
+          onConfirm={handleDelete}
+        />
+      </Dialog>
+    );
 }

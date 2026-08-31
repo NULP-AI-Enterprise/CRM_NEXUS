@@ -1,13 +1,16 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { format } from "date-fns";
 import { uk, enUS } from "date-fns/locale";
-import { ArrowUpRight } from "lucide-react";
+import { ArrowUpRight, GitBranch } from "lucide-react";
 
 import { NetworkGraphPreview } from "@/components/graph/network-graph-preview";
 import { StatCard } from "@/components/dashboard/stat-card";
 import { Sparkline } from "@/components/dashboard/sparkline";
+import { ClusterWorkflowDiagram } from "@/components/timeline/cluster-workflow-diagram";
+import { entityKey, entityLabel } from "@/lib/timeline-entity";
 import { CATEGORY_COLORS } from "@/lib/contact-display";
 import { useTranslation } from "@/lib/i18n/context";
 import type { ContactCategory } from "@/generated/prisma/enums";
@@ -22,6 +25,7 @@ interface OverviewViewProps {
 export function OverviewView({ summary, topHubs }: OverviewViewProps) {
   const { t, locale } = useTranslation();
   const dateLocale = locale === "uk" ? uk : enUS;
+  const [workflow, setWorkflow] = useState<{ entityKey: string; eventId: string } | null>(null);
 
   const categoryBreakdown = (Object.entries(summary.categoryCounts) as [ContactCategory, number][]).filter(
     ([, count]) => count > 0,
@@ -137,25 +141,33 @@ export function OverviewView({ summary, topHubs }: OverviewViewProps) {
               <div className="flex flex-col">
                 {summary.latestInteractions.map((event) => {
                   const entity = event.entity;
-                  const href = entity.kind === "contact" ? `/contacts/${entity.contact.id}` : `/contacts/${entity.fromContact.id}`;
-                  const label =
-                    entity.kind === "contact" ? entity.contact.fullName : `${entity.fromContact.fullName} ↔ ${entity.toContact.fullName}`;
+                  const href =
+                    entity.kind === "contact"
+                      ? `/contacts/${entity.contact.id}`
+                      : entity.kind === "connection"
+                        ? `/contacts/${entity.fromContact.id}`
+                        : entity.kind === "company"
+                          ? "/companies"
+                          : "/communities";
+                  const label = entityLabel(entity);
                   const dotColor =
                     entity.kind === "contact"
                       ? CATEGORY_COLORS[entity.contact.category as ContactCategory].dot
                       : CATEGORY_COLORS.OTHER.dot;
+                  // The workflow diagram is a Contact/ContactConnection BFS —
+                  // a company/community event has no cluster to open there.
+                  const canOpenHistory = entity.kind === "contact" || entity.kind === "connection";
 
                   return (
-                    <Link
+                    <div
                       key={event.id}
-                      href={href}
-                      className="flex gap-[11px] border-t border-border px-[18px] py-[11px] first:border-t-0 hover:bg-muted"
+                      className="flex items-start gap-[11px] border-t border-border px-[18px] py-[11px] first:border-t-0 hover:bg-muted"
                     >
                       <span
                         className="mt-[5px] size-[7px] shrink-0 rounded-full"
                         style={{ backgroundColor: dotColor }}
                       />
-                      <div className="min-w-0 flex-1">
+                      <Link href={href} className="min-w-0 flex-1">
                         <p className="truncate text-[12.5px] font-medium leading-[1.35] text-foreground">
                           {event.rawText}
                         </p>
@@ -164,11 +176,25 @@ export function OverviewView({ summary, topHubs }: OverviewViewProps) {
                           <span>·</span>
                           <span className="truncate">{label}</span>
                         </div>
-                      </div>
+                      </Link>
                       <span className="h-[18px] shrink-0 rounded-[20px] bg-muted px-[7px] text-[10px] font-semibold leading-[18px] text-muted-foreground">
                         {t(`interactionType.${event.type}`)}
                       </span>
-                    </Link>
+                      {/* This note lives in the same interaction graph as
+                          Follow-ups/Timeline already link into — without
+                          this, the widget's only exit was the contact
+                          profile, with no way back to this specific note's
+                          place in its history. */}
+                      {canOpenHistory && (
+                        <button
+                          onClick={() => setWorkflow({ entityKey: entityKey(event.entity), eventId: event.id })}
+                          title={t("timelineView.openCluster")}
+                          className="shrink-0 rounded-md p-1 text-muted-foreground/50 transition-colors hover:bg-card hover:text-foreground"
+                        >
+                          <GitBranch className="size-3" />
+                        </button>
+                      )}
+                    </div>
                   );
                 })}
               </div>
@@ -202,6 +228,13 @@ export function OverviewView({ summary, topHubs }: OverviewViewProps) {
           </div>
         </div>
       </div>
+
+      <ClusterWorkflowDiagram
+        open={workflow != null}
+        onOpenChange={(open) => !open && setWorkflow(null)}
+        entityKey={workflow?.entityKey ?? null}
+        initialEventId={workflow?.eventId ?? null}
+      />
     </div>
   );
 }

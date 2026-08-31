@@ -2,9 +2,8 @@ import { NextResponse } from "next/server";
 
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { ContactCategory } from "@/generated/prisma/enums";
 import { checkRateLimit, getClientIp, rateLimitedResponse } from "@/lib/rate-limit";
-import { contactInputSchema } from "@/lib/validation/contact";
+import { contactInputSchema, updateField } from "@/lib/validation/contact";
 
 type RouteContext = { params: Promise<{ id: string }> };
 
@@ -30,7 +29,13 @@ export async function PATCH(request: Request, { params }: RouteContext) {
     return NextResponse.json({ error: "Invalid JSON body." }, { status: 400 });
   }
 
-  const parsed = contactInputSchema.safeParse(body);
+  // .partial(): every field becomes optional at the key level (its own
+  // validator — min length, enum membership, etc. — still applies whenever
+  // the caller does include it). An inline single-field edit sends only that
+  // one key; every other key comes back `undefined` from Zod, which Prisma's
+  // own convention already treats as "leave this column untouched," not
+  // "clear it" — the fix for the single biggest risk of per-field autosave.
+  const parsed = contactInputSchema.partial().safeParse(body);
   if (!parsed.success) {
     return NextResponse.json(
       { error: parsed.error.issues[0]?.message ?? "Invalid request." },
@@ -39,6 +44,7 @@ export async function PATCH(request: Request, { params }: RouteContext) {
   }
 
   const {
+    fullName,
     companyId,
     role,
     phone,
@@ -53,18 +59,23 @@ export async function PATCH(request: Request, { params }: RouteContext) {
     valuePotential,
     fullSummary,
     communityIds,
-    ...rest
+    category,
+    usefulnessScore,
   } = parsed.data;
 
-  let companyName: string | null = null;
-  if (companyId) {
-    const company = await prisma.company.findFirst({
-      where: { id: companyId, userId: session.user.id },
-    });
-    if (!company) {
-      return NextResponse.json({ error: "Company not found." }, { status: 404 });
+  let companyName: string | null | undefined;
+  if (companyId !== undefined) {
+    if (companyId) {
+      const company = await prisma.company.findFirst({
+        where: { id: companyId, userId: session.user.id },
+      });
+      if (!company) {
+        return NextResponse.json({ error: "Company not found." }, { status: 404 });
+      }
+      companyName = company.name;
+    } else {
+      companyName = null;
     }
-    companyName = company.name;
   }
 
   let communitiesUpdate:
@@ -85,23 +96,23 @@ export async function PATCH(request: Request, { params }: RouteContext) {
   const contact = await prisma.contact.update({
     where: { id },
     data: {
-      fullName: parsed.data.fullName,
-      role: role || null,
-      companyId: companyId || null,
+      fullName,
+      role: updateField(role),
+      companyId: companyId === undefined ? undefined : companyId || null,
       companyName,
-      phone: phone || null,
-      linkedin: linkedin || null,
-      telegram: telegram || null,
-      instagram: instagram || null,
-      whatsapp: whatsapp || null,
-      city: city || null,
-      country: country || null,
-      category: rest.category ?? ContactCategory.OTHER,
-      usefulnessScore: rest.usefulnessScore ?? null,
-      temperament: temperament || null,
-      needs: needs || null,
-      valuePotential: valuePotential || null,
-      fullSummary: fullSummary || null,
+      phone: updateField(phone),
+      linkedin: updateField(linkedin),
+      telegram: updateField(telegram),
+      instagram: updateField(instagram),
+      whatsapp: updateField(whatsapp),
+      city: updateField(city),
+      country: updateField(country),
+      category,
+      usefulnessScore: updateField(usefulnessScore),
+      temperament: updateField(temperament),
+      needs: updateField(needs),
+      valuePotential: updateField(valuePotential),
+      fullSummary: updateField(fullSummary),
       communities: communitiesUpdate,
     },
     include: { company: true, communities: true },

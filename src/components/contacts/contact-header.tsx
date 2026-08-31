@@ -7,9 +7,10 @@ import { Trash2, MapPin, Phone, Link2, Send, Camera, MessageCircle } from "lucid
 import { toast } from "sonner";
 
 import { CATEGORY_COLORS, initials, linkedinUrl, telegramUrl, instagramUrl, whatsappUrl } from "@/lib/contact-display";
+import { EditableField } from "@/components/ui/editable-field";
 import { useTranslation } from "@/lib/i18n/context";
+import type { ContactCategory } from "@/generated/prisma/enums";
 import type { CompanyModel, ContactModel } from "@/generated/prisma/models";
-import { ContactFormDialog } from "@/components/contacts/contact-form-dialog";
 import { ConfirmDeleteDialog } from "@/components/confirm-delete-dialog";
 
 type ContactHeaderType = ContactModel & {
@@ -17,21 +18,40 @@ type ContactHeaderType = ContactModel & {
   communities?: Array<{ id: string; name: string }>;
 };
 
-export function ContactHeader({
-  contact,
-  companies,
-  communities = [],
-}: {
-  contact: ContactHeaderType;
-  companies: Array<{ id: string; name: string }>;
-  communities?: Array<{ id: string; name: string }>;
-}) {
+const CATEGORIES: ContactCategory[] = ["VIP", "HR", "INVESTOR", "LEAD", "COLLEAGUE", "FRIEND", "OTHER"];
+
+export function ContactHeader({ contact }: { contact: ContactHeaderType }) {
   const { t } = useTranslation();
   const router = useRouter();
-  const [isEditOpen, setIsEditOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+  const [isSavingCategory, setIsSavingCategory] = useState(false);
+  const [category, setCategory] = useState(contact.category);
 
-  const colors = CATEGORY_COLORS[contact.category] || CATEGORY_COLORS.OTHER;
+  const patch = async (data: Record<string, unknown>) => {
+    const res = await fetch(`/api/contacts/${contact.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) throw new Error();
+    router.refresh();
+  };
+
+  const handleCategoryChange = async (next: ContactCategory) => {
+    const prev = category;
+    setCategory(next);
+    setIsSavingCategory(true);
+    try {
+      await patch({ category: next });
+    } catch {
+      toast.error(t("common.unknownError"));
+      setCategory(prev);
+    } finally {
+      setIsSavingCategory(false);
+    }
+  };
+
+  const colors = CATEGORY_COLORS[category] || CATEGORY_COLORS.OTHER;
 
   const handleDeleteContact = async () => {
     try {
@@ -77,11 +97,23 @@ export function ContactHeader({
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-x-[9px] gap-y-1">
             <span
-              className="kicker flex items-center gap-1.5 rounded-[5px] bg-white px-2 py-[3px]"
+              className="kicker flex items-center gap-1.5 rounded-[5px] bg-white px-1 py-[1px]"
               style={{ fontSize: "9.5px", color: colors.text }}
             >
-              <span className="size-1.5 rounded-full" style={{ backgroundColor: colors.dot }} />
-              {t(`category.${contact.category}`)}
+              <span className="size-1.5 shrink-0 rounded-full" style={{ backgroundColor: colors.dot }} />
+              <select
+                value={category}
+                disabled={isSavingCategory}
+                onChange={(e) => handleCategoryChange(e.target.value as ContactCategory)}
+                className="bg-transparent py-[2px] pr-1 outline-none disabled:opacity-50"
+                style={{ color: colors.text, fontSize: "9.5px" }}
+              >
+                {CATEGORIES.map((cat) => (
+                  <option key={cat} value={cat}>
+                    {t(`category.${cat}`)}
+                  </option>
+                ))}
+              </select>
             </span>
             {(contact.role || contact.company) && (
               <span className="text-[11.5px] text-[#6e7480]">
@@ -92,9 +124,13 @@ export function ContactHeader({
             )}
           </div>
 
-          <h1 className="mt-[7px] font-heading text-[25px] font-semibold tracking-[-0.6px] text-foreground">
-            {contact.fullName}
-          </h1>
+          <EditableField
+            value={contact.fullName}
+            placeholder={t("contact.form.fullNamePlaceholder")}
+            onSave={(value) => patch({ fullName: value })}
+            className="mt-[5px] px-0"
+            inputClassName="mt-[7px] h-auto py-0 font-heading text-[25px] font-semibold tracking-[-0.6px] text-foreground"
+          />
 
           <div className="mt-2.5 flex flex-wrap items-center gap-[7px]">
             {location && (
@@ -138,12 +174,6 @@ export function ContactHeader({
         </Link>
         <div className="flex items-center gap-2">
           <button
-            onClick={() => setIsEditOpen(true)}
-            className="rounded-[9px] border border-[#e4e3de] bg-white px-[13px] py-2 text-[12px] font-semibold text-foreground transition-colors hover:border-[#c9c8c2]"
-          >
-            {t("common.edit")}
-          </button>
-          <button
             onClick={() => setIsDeleteOpen(true)}
             title={t("common.delete")}
             className="flex size-[34px] items-center justify-center rounded-[9px] border border-[#e4e3de] bg-white text-[#9a9a94] transition-colors hover:text-destructive"
@@ -152,14 +182,6 @@ export function ContactHeader({
           </button>
         </div>
       </div>
-
-      <ContactFormDialog
-        open={isEditOpen}
-        onOpenChange={setIsEditOpen}
-        companies={companies}
-        communities={communities}
-        contact={contact}
-      />
 
       <ConfirmDeleteDialog
         open={isDeleteOpen}

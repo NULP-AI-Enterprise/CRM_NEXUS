@@ -117,13 +117,16 @@ export function AppSidebar({ userEmail, counts, signOutButton }: AppSidebarProps
         { href: "/contacts", icon: "people", label: t("dashboard.tab.contacts"), count: counts.contacts, color: "#EF8163", tint: "people" },
         { href: "/companies", icon: "companies", label: t("dashboard.tab.companies"), count: counts.companies, color: "#43A883", tint: "companies" },
         { href: "/communities", icon: "communities", label: t("dashboard.tab.communities"), count: counts.communities, color: "#9B7BE0", tint: "communities" },
-        { href: "/network", icon: "connections", label: t("nav.connections"), count: counts.connections, color: "#5B8DEF", tint: "connections" },
       ],
     },
     {
       title: t("nav.network"),
       items: [
-        { href: "/network", icon: "graph", label: t("dashboard.tab.graph"), tint: "neutral" },
+        // Was also duplicated under Entities as "Connections" pointing at
+        // this exact same route — two differently-labeled sidebar rows
+        // opening the identical graph. Kept once, here, with that entry's
+        // count carried over so the at-a-glance number isn't lost.
+        { href: "/network", icon: "graph", label: t("dashboard.tab.graph"), count: counts.connections, tint: "neutral" },
         { href: "/timeline", icon: "timeline", label: t("dashboard.tab.timeline"), tint: "timeline" },
       ],
     },
