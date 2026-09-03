@@ -1,6 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 
 import {
   ListHeader,
@@ -13,7 +15,6 @@ import {
   HEADER_TINT,
 } from "@/components/layout/list-chrome";
 import { CommunityAccordion } from "@/components/dashboard/community-accordion";
-import { CommunityFormDialog } from "@/components/dashboard/community-form-dialog";
 import { useTranslation } from "@/lib/i18n/context";
 import type { CommunityModel, ContactModel } from "@/generated/prisma/models";
 
@@ -21,7 +22,8 @@ type CommunityWithContacts = CommunityModel & { contacts: ContactModel[] };
 
 export function CommunitiesPageView({ communities }: { communities: CommunityWithContacts[] }) {
   const { t } = useTranslation();
-  const [isNewCommunityOpen, setIsNewCommunityOpen] = useState(false);
+  const router = useRouter();
+  const [isPending, startTransition] = useTransition();
   const [query, setQuery] = useState("");
 
   const filteredCommunities = useMemo(() => {
@@ -30,6 +32,26 @@ export function CommunitiesPageView({ communities }: { communities: CommunityWit
     return communities.filter((c) => c.name.toLowerCase().includes(q));
   }, [communities, query]);
 
+  const handleCreateNew = () => {
+    startTransition(async () => {
+      try {
+        const tempName = `${t("dashboard.newCommunity")} ${Math.floor(Math.random() * 10000)}`;
+        const res = await fetch("/api/communities", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name: tempName }),
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          throw new Error(data?.error ?? t("common.unknownError"));
+        }
+        router.push(`/communities/${data.community.id}`);
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : t("common.unknownError"));
+      }
+    });
+  };
+
   return (
     <div className="flex flex-col gap-4 pb-12">
       <ListHeader
@@ -37,7 +59,7 @@ export function CommunitiesPageView({ communities }: { communities: CommunityWit
         tint={HEADER_TINT.communities}
         title={t("dashboard.tab.communities")}
         count={communities.length}
-        action={<AddButton onClick={() => setIsNewCommunityOpen(true)}>{t("dashboard.newCommunity")}</AddButton>}
+        action={<AddButton onClick={handleCreateNew} disabled={isPending}>{t("dashboard.newCommunity")}</AddButton>}
       />
 
       <FilterBar>
@@ -55,8 +77,6 @@ export function CommunitiesPageView({ communities }: { communities: CommunityWit
       ) : (
         <CommunityAccordion communities={filteredCommunities} />
       )}
-
-      <CommunityFormDialog open={isNewCommunityOpen} onOpenChange={setIsNewCommunityOpen} />
     </div>
   );
 }

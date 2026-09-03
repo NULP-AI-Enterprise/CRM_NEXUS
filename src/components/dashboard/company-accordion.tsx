@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Building2, Maximize2 } from "lucide-react";
+import { Building2 } from "lucide-react";
 import { toast } from "sonner";
 
 import {
@@ -70,7 +70,16 @@ export function CompanyAccordion({ companies }: { companies: CompanyWithContacts
               >
                 <div className="flex items-center gap-[9px] min-w-0">
                   <Building2 className="size-3.5 shrink-0" style={{ color: "#43A883" }} />
-                  <span className="truncate text-[13px] font-semibold text-foreground">{company.name}</span>
+                  <span 
+                    className="truncate text-[13px] font-semibold text-foreground cursor-pointer hover:underline"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      router.push(`/companies/${company.id}`);
+                    }}
+                  >
+                    {company.name}
+                  </span>
                 </div>
                 <div className="truncate text-[12px] text-muted-foreground">{company.industry ?? "—"}</div>
                 <div className="text-[12px] text-muted-foreground">{company.contacts.length}</div>
@@ -83,22 +92,21 @@ export function CompanyAccordion({ companies }: { companies: CompanyWithContacts
               >
                 <div className="flex items-center gap-[9px] min-w-0">
                   <Building2 className="size-3.5 shrink-0" style={{ color: "#43A883" }} />
-                  <span className="truncate text-[13px] font-semibold text-foreground">{company.name}</span>
+                  <span 
+                    className="truncate text-[13px] font-semibold text-foreground cursor-pointer hover:underline"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      router.push(`/companies/${company.id}`);
+                    }}
+                  >
+                    {company.name}
+                  </span>
                 </div>
                 <div className="text-[12px] text-muted-foreground">{company.contacts.length}</div>
               </div>
             </AccordionTrigger>
             <div className="absolute right-[18px] top-1/2 flex -translate-y-1/2 items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  router.push(`/companies/${company.id}`);
-                }}
-                title={t("company.detail.viewDetails")}
-                className="flex items-center gap-1 rounded-md px-2 py-1 text-[11px] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-              >
-                <Maximize2 className="size-3" />
-              </button>
               <EntityCardActions onDelete={() => setDeletingCompany(company)} className="opacity-100" />
             </div>
             <AccordionContent className="px-[18px] pb-4 pt-0">

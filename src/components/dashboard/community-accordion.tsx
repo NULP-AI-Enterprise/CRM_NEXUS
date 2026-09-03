@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Maximize2, UsersRound } from "lucide-react";
+import { UsersRound } from "lucide-react";
 import { toast } from "sonner";
 
 import {
@@ -56,7 +56,14 @@ export function CommunityAccordion({ communities }: { communities: CommunityWith
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
-                      <p className="truncate text-[14px] font-semibold leading-[1.3] tracking-[-0.2px] text-foreground">
+                      <p 
+                        className="truncate text-[14px] font-semibold leading-[1.3] tracking-[-0.2px] text-foreground cursor-pointer hover:underline"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          router.push(`/communities/${community.id}`);
+                        }}
+                      >
                         {community.name}
                       </p>
                       <span
@@ -74,16 +81,6 @@ export function CommunityAccordion({ communities }: { communities: CommunityWith
               </AccordionTrigger>
 
               <div className="absolute right-4 top-[15px] flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    router.push(`/communities/${community.id}`);
-                  }}
-                  title={t("community.detail.viewDetails")}
-                  className="flex items-center gap-1 rounded-md px-2 py-1 text-[11px] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-                >
-                  <Maximize2 className="size-3" />
-                </button>
                 <EntityCardActions onDelete={() => setDeletingCommunity(community)} className="opacity-100" />
               </div>
 

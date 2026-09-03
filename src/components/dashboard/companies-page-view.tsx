@@ -1,6 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 
 import {
   ListHeader,
@@ -14,7 +16,6 @@ import {
   HEADER_TINT,
 } from "@/components/layout/list-chrome";
 import { CompanyAccordion } from "@/components/dashboard/company-accordion";
-import { CompanyFormDialog } from "@/components/dashboard/company-form-dialog";
 import { useTranslation } from "@/lib/i18n/context";
 import type { CompanyModel, ContactModel } from "@/generated/prisma/models";
 
@@ -26,7 +27,8 @@ interface CompaniesPageViewProps {
 
 export function CompaniesPageView({ companies }: CompaniesPageViewProps) {
   const { t } = useTranslation();
-  const [isNewCompanyOpen, setIsNewCompanyOpen] = useState(false);
+  const router = useRouter();
+  const [isPending, startTransition] = useTransition();
   const [query, setQuery] = useState("");
   const [industry, setIndustry] = useState<string>("ALL");
 
@@ -46,6 +48,26 @@ export function CompaniesPageView({ companies }: CompaniesPageViewProps) {
     });
   }, [companies, query, industry]);
 
+  const handleCreateNew = () => {
+    startTransition(async () => {
+      try {
+        const tempName = `${t("dashboard.newCompany")} ${Math.floor(Math.random() * 10000)}`;
+        const res = await fetch("/api/companies", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name: tempName }),
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          throw new Error(data?.error ?? t("common.unknownError"));
+        }
+        router.push(`/companies/${data.company.id}`);
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : t("common.unknownError"));
+      }
+    });
+  };
+
   return (
     <div className="flex flex-col gap-4 pb-12">
       <ListHeader
@@ -53,7 +75,7 @@ export function CompaniesPageView({ companies }: CompaniesPageViewProps) {
         tint={HEADER_TINT.companies}
         title={t("dashboard.tab.companies")}
         count={companies.length}
-        action={<AddButton onClick={() => setIsNewCompanyOpen(true)}>{t("dashboard.newCompany")}</AddButton>}
+        action={<AddButton onClick={handleCreateNew} disabled={isPending}>{t("dashboard.newCompany")}</AddButton>}
       />
 
       <FilterBar>
@@ -81,8 +103,6 @@ export function CompaniesPageView({ companies }: CompaniesPageViewProps) {
       ) : (
         <CompanyAccordion companies={filteredCompanies} />
       )}
-
-      <CompanyFormDialog open={isNewCompanyOpen} onOpenChange={setIsNewCompanyOpen} />
     </div>
   );
 }
