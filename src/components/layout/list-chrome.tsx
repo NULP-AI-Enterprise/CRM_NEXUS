@@ -48,12 +48,14 @@ export function ListHeader({
   );
 }
 
-/** Dark pill primary action ("+ Add …"), matching the dashboard buttons. */
-export function AddButton({ children, onClick }: { children: ReactNode; onClick?: () => void }) {
+export function AddButton({ children, onClick, disabled }: { children: ReactNode; onClick?: () => void; disabled?: boolean }) {
   return (
     <button
       onClick={onClick}
-      className="whitespace-nowrap rounded-[10px] bg-[#1b1d21] px-[15px] py-[9px] text-[12.5px] font-semibold text-white transition-colors hover:bg-[#33363d]"
+      disabled={disabled}
+      className={`whitespace-nowrap rounded-[10px] bg-[#1b1d21] px-[15px] py-[9px] text-[12.5px] font-semibold text-white transition-colors hover:bg-[#33363d] ${
+        disabled ? "opacity-50 cursor-not-allowed pointer-events-none" : ""
+      }`}
     >
       {children}
     </button>
