@@ -20,7 +20,7 @@ export default async function NetworkPage() {
 
   return (
     <div className="flex flex-col gap-4 pb-12">
-      <Suspense fallback={<div className="h-[70vh] max-h-[700px] min-h-[420px] rounded-xl border border-border bg-muted" />}>
+      <Suspense fallback={<div className="h-[calc(100vh-140px)] min-h-[500px] rounded-xl border border-border bg-muted" />}>
         <NetworkGraph initialData={graphData} />
       </Suspense>
     </div>

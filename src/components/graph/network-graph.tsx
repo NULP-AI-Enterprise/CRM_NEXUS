@@ -1192,7 +1192,7 @@ export function NetworkGraph({ initialData }: NetworkGraphProps) {
     <div
       ref={containerRef}
       className={`relative w-full overflow-hidden rounded-xl border border-border graph-canvas-bg transition-all duration-200 ${
-        isFullscreen ? "fixed inset-0 z-50 h-screen rounded-none" : "h-[70vh] max-h-[700px] min-h-[420px]"
+        isFullscreen ? "fixed inset-0 z-50 h-screen rounded-none" : "h-[calc(100vh-140px)] min-h-[500px]"
       }`}
     >
       {/* touch-none hands every gesture to the handlers below; without it the
