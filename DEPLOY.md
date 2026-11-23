@@ -1254,3 +1254,21 @@ kubectl exec -n personal-crm personal-crm-postgres-0 -- \
 | Лист підтвердження не приходить | невірний `SMTP_PASSWORD` (потрібен Gmail App Password), або лист у спамі | `kubectl logs ... -c personal-crm \| grep -i "verification email"`; перевірити https://myaccount.google.com/apppasswords |
 | Вхід відмовляє з "підтвердіть email" після кліку на лінк | токен застарів (TTL 24 год) або вже використаний | натиснути "надіслати повторно" на сторінці входу |
 | `Init:Error` при повторному застосуванні миграцій, `relation already exists` | дубльована миграція створює таблицю, що вже є в `init` | див. підрозділ "Виправлено" в §4 — `grep -c <Table> prisma/migrations/*/migration.sql` |
+
+## Personal CRM: відновлення PostgreSQL на Mac-кластері, 2026-11-23
+
+Симптоми: `personal-crm-postgres-0` у CrashLoopBackOff з порожніми логами,
+застосунок у `Init:0/2`, `wait-for-db` повідомляє `no response`, сайт повертає 503.
+У `k8s/postgres.yaml` додано прямий запуск від UID/GID 70 (`postgres`), `fsGroup: 70`
+і `appArmorProfile.type: Unconfined` лише для контейнера бази. Це обхід збоїв
+зміни користувача та сигналів recovery у середовищі Mac-кластера, як у попередніх
+інцидентах ButikToys POS і Кривди. AppArmor на вузлах не вимикається.
+
+Після зміни шаблону дочекайтеся оновлення StatefulSet. Якщо старий нездоровий pod
+не замінюється, видаліть лише pod `personal-crm-postgres-0`, зберігши PVC.
+Перевірте готовність бази й застосунку, завершення міграцій і `/api/health`
+(`status: ok`, `database: up`). Під час відновлення також успішно виконано
+`CHECKPOINT`, `pg_is_in_recovery()` повернув `false`. Дані не переініціалізуються.
+
+Повернення обмеженого профілю AppArmor потребує виправлення runtime/profile
+і перевірки запуску та checkpoint. Точну причину зміни поведінки профілю ще не встановлено.

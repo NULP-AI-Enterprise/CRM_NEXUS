@@ -17,9 +17,19 @@ spec:
       labels:
         app: personal-crm-postgres
     spec:
+      securityContext:
+        fsGroup: 70
       containers:
         - name: postgres
           image: postgres:16-alpine
+          securityContext:
+            # Avoid gosu privilege-drop hangs on the Mac cluster.
+            runAsUser: 70
+            runAsGroup: 70
+            runAsNonRoot: true
+            # The runtime AppArmor profile blocks PostgreSQL recovery signals.
+            appArmorProfile:
+              type: Unconfined
           ports:
             - name: postgres
               containerPort: 5432
